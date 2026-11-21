@@ -151,6 +151,8 @@ And of course a download button.
 >   - Already-cached and out-of-coverage tiles are skipped. HTTP 429/503 gets one retry after 10 s; other failures are counted and shown.
 >   - Downloaded tiles go into the same permanent cache as browsed ones.
 #### (multiple entries) List of starred map sources
+
+> **Addition (2026-11-21): layers button on the map.** A layers button (two stacked diamonds) sits in the map's right-hand column, below centre-on-GPS. It opens a popup listing the starred, non-hidden sources by short name only (no categories), with a check on the current one. Sources whose key is missing are greyed out. A last entry, "More…", opens the More maps list. The starred list in the menu stays as well.
 #### More maps
 This opens a list with all sources. Each source can be starred/unstarred so it appears in the main map menu.
 
@@ -282,6 +284,7 @@ How the list evolves: the curated list ships **built into the app**, and the use
 - **Source record** (the same schema for built-in and custom sources):
   - `id`: stable, never reused.
   - `name`, `category`, `urlTemplate`.
+  - `shortName`: optional label for the map's layers popup (e.g. "OSM", "TF Outdoors"). Falls back to `name`; custom sources use their name.
   - `subdomains`: list, optional.
   - `tileSize`: 256 or 512.
   - `minZoom`, `maxZoom`.

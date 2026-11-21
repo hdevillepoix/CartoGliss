@@ -58,6 +58,7 @@ fun CartoGlissNavHost() {
         composable(Routes.MAP) {
             MapScreen(
                 onOpenMenu = { go(Routes.MENU) },
+                onOpenSources = { go(Routes.SOURCES) },
                 onAddWaypoint = { lat, lon -> go(Routes.addWaypoint(lat, lon)) },
             )
         }

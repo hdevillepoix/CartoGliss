@@ -3,6 +3,7 @@
     {
       "id": "ms-satellite",
       "name": "Microsoft satellite",
+      "shortName": "MS satellite",
       "category": "General",
       "urlTemplate": "https://ecn.t{s}.tiles.virtualearth.net/tiles/a{q}.jpeg?g=1",
       "subdomains": ["0", "1", "2", "3"],
@@ -15,6 +16,7 @@
     {
       "id": "azure-imagery",
       "name": "Microsoft satellite (Azure Maps)",
+      "shortName": "Azure satellite",
       "category": "General",
       "urlTemplate": "https://atlas.microsoft.com/map/tile?api-version=2024-04-01&tilesetId=microsoft.imagery&zoom={z}&x={x}&y={y}&tileSize=512",
       "headers": { "subscription-key": "{key}" },
@@ -27,6 +29,7 @@
     {
       "id": "mapbox-satellite",
       "name": "Mapbox satellite",
+      "shortName": "Mapbox satellite",
       "category": "General",
       "urlTemplate": "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token={key}",
       "tileSize": 512,
@@ -38,6 +41,7 @@
     {
       "id": "osm-standard",
       "name": "Standard OSM",
+      "shortName": "OSM",
       "category": "General",
       "urlTemplate": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       "tileSize": 256,
@@ -50,6 +54,7 @@
     {
       "id": "tracestrack-topo",
       "name": "Tracestrack Topo",
+      "shortName": "Tracestrack",
       "category": "General",
       "urlTemplate": "https://tile.tracestrack.com/topo_auto/{z}/{x}/{y}.webp?key={key}",
       "tileSize": 512,
@@ -62,6 +67,7 @@
     {
       "id": "tf-outdoors",
       "name": "Outdoors (Thunderforest)",
+      "shortName": "TF Outdoors",
       "category": "Hiking",
       "urlTemplate": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}@2x.png?apikey={key}",
       "tileSize": 512,
@@ -73,6 +79,7 @@
     {
       "id": "tf-landscape",
       "name": "Landscape (Thunderforest)",
+      "shortName": "TF Landscape",
       "category": "Hiking",
       "urlTemplate": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}@2x.png?apikey={key}",
       "tileSize": 512,
@@ -84,6 +91,7 @@
     {
       "id": "opentopomap",
       "name": "OpenTopoMap",
+      "shortName": "OpenTopo",
       "category": "Hiking",
       "urlTemplate": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       "subdomains": ["a", "b", "c"],
@@ -96,6 +104,7 @@
     {
       "id": "cyclosm",
       "name": "CyclOSM",
+      "shortName": "CyclOSM",
       "category": "Biking",
       "urlTemplate": "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
       "subdomains": ["a", "b", "c"],
@@ -109,6 +118,7 @@
     {
       "id": "tf-cycle",
       "name": "OpenCycleMap (Thunderforest)",
+      "shortName": "OpenCycleMap",
       "category": "Biking",
       "urlTemplate": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}@2x.png?apikey={key}",
       "tileSize": 512,
@@ -120,6 +130,7 @@
     {
       "id": "os-outdoor",
       "name": "Ordnance Survey Outdoor (UK)",
+      "shortName": "OS Outdoor",
       "category": "Local",
       "urlTemplate": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key={key}",
       "tileSize": 256,
@@ -133,6 +144,7 @@
     {
       "id": "ga-topo-au",
       "name": "Australia Topographic (GA)",
+      "shortName": "GA Topo",
       "category": "Local",
       "urlTemplate": "https://services.ga.gov.au/gis/rest/services/Topographic_Base_Map/MapServer/WMTS/tile/1.0.0/Topographic_Base_Map/default/GoogleMapsCompatible/{z}/{y}/{x}.png",
       "tileSize": 256,

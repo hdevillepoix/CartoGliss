@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.material3.AlertDialog
 import app.cartogliss.ui.map.RecordMode
+import app.cartogliss.ui.map.LayerChoice
+import app.cartogliss.ui.map.LayersButton
 import androidx.compose.material3.TextButton
 import androidx.core.content.ContextCompat
 import app.cartogliss.tracks.TrackStats
@@ -95,22 +97,23 @@ private fun mapOverlay(fix: Fix?, heading: Heading?, target: Target?, nowNanos: 
 }
 
 @Composable
-fun MapScreen(onOpenMenu: () -> Unit, onAddWaypoint: (lat: Double, lon: Double) -> Unit) {
+fun MapScreen(onOpenMenu: () -> Unit, onOpenSources: () -> Unit, onAddWaypoint: (lat: Double, lon: Double) -> Unit) {
     val repo = LocalContext.current.appContainer.settings
     val settings by repo.settings.collectAsStateWithLifecycle(initialValue = null)
     // Wait for stored settings so the map opens on the last viewport, not on a default.
-    settings?.let { MapContent(it, onOpenMenu, onAddWaypoint) }
+    settings?.let { MapContent(it, onOpenMenu, onOpenSources, onAddWaypoint) }
 }
 
 @OptIn(FlowPreview::class)
 @Composable
-private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint: (Double, Double) -> Unit) {
+private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onOpenSources: () -> Unit, onAddWaypoint: (Double, Double) -> Unit) {
     val context = LocalContext.current
     val container = context.appContainer
     val scope = rememberCoroutineScope()
     val tilePx = with(LocalDensity.current) { TILE_DP.toPx() }
     val live by container.settings.settings.collectAsStateWithLifecycle(initial)
     val allSources by container.sources.sources.collectAsStateWithLifecycle()
+    val apiKeys by container.apiKeys.collectAsStateWithLifecycle()
     val source = remember(allSources, live.viewport.sourceId) { container.sources.resolve(live.viewport.sourceId) }
 
     var vp by remember { mutableStateOf(MapViewport.from(initial.viewport).clampZoom(source.minZoom, source.maxZoom)) }
@@ -276,6 +279,15 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
                 CentreOnGpsButton(enabled = fix != null) {
                     fix?.let { vp = vp.centredOn(it.lat, it.lon) }
                 }
+                Spacer(Modifier.height(12.dp))
+                LayersButton(
+                    choices = allSources
+                        .filter { it.id in live.starredSources && !container.sources.isHidden(it.id) }
+                        .map { LayerChoice(it, it.missingKey(apiKeys) == null) },
+                    currentId = source.id,
+                    onSelect = { id -> scope.launch { container.settings.setSource(id) } },
+                    onMore = onOpenSources,
+                )
             }
 
             ScaleBar(

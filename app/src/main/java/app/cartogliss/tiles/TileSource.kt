@@ -30,7 +30,11 @@ data class TileSource(
     val headers: Map<String, String> = emptyMap(),
     val builtIn: Boolean = false,
     val notes: String = "",
+    /** Short label for the map's layers popup; falls back to [name]. */
+    val shortName: String? = null,
 ) {
+    val label: String get() = shortName?.takeIf { it.isNotBlank() } ?: name
+
     /** True when tile (z, x, y) intersects [coverage] (always true without a coverage box). */
     fun covers(z: Int, x: Int, y: Int): Boolean {
         val c = coverage ?: return true
@@ -98,13 +102,14 @@ data class SourceDto(
     val coverage: LatLonBox? = null,
     val headers: Map<String, String> = emptyMap(),
     val notes: String = "",
+    val shortName: String? = null,
 ) {
     fun toSource(builtIn: Boolean) = TileSource(
         id = id, name = name, category = category, urlTemplate = urlTemplate, subdomains = subdomains,
         tileSize = tileSize, minZoom = minZoom, maxZoom = maxZoom,
         keyProvider = keyProvider?.let { kp -> KeyProvider.entries.first { it.name.equals(kp, ignoreCase = true) } },
         customKey = customKey, attribution = attribution, bulkDownloadAllowed = bulkDownloadAllowed,
-        coverage = coverage, headers = headers, builtIn = builtIn, notes = notes,
+        coverage = coverage, headers = headers, builtIn = builtIn, notes = notes, shortName = shortName,
     )
 
     companion object {
@@ -113,6 +118,7 @@ data class SourceDto(
             tileSize = s.tileSize, minZoom = s.minZoom, maxZoom = s.maxZoom,
             keyProvider = s.keyProvider?.name?.lowercase(), customKey = s.customKey, attribution = s.attribution,
             bulkDownloadAllowed = s.bulkDownloadAllowed, coverage = s.coverage, headers = s.headers, notes = s.notes,
+            shortName = s.shortName,
         )
     }
 }
@@ -142,5 +148,6 @@ object BuiltInSources {
         bulkDownloadAllowed = false,
         builtIn = true,
         notes = "OSMF tile usage policy: no bulk downloading.",
+        shortName = "OSM",
     )
 }
