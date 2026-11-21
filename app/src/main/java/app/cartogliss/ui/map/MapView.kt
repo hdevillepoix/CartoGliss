@@ -38,6 +38,17 @@ import kotlinx.coroutines.launch
 import kotlin.math.hypot
 import kotlin.math.max
 
+/**
+ * One-finger drawing (download screen). While set, a single finger draws instead of panning;
+ * two fingers still pan and pinch (and cancel the stroke).
+ */
+interface DragHandler {
+    fun start(at: Offset)
+    fun move(at: Offset)
+    fun end()
+    fun cancel()
+}
+
 /** Screen size of one tile at overzoom 1, in dp (see DESIGN.md: always 256 dp × M). */
 val TILE_DP = 256.dp
 
@@ -68,6 +79,7 @@ fun MapView(
     tracks: List<PreparedLine> = emptyList(),
     /** A confirmed single tap (not the first half of a double-tap), in screen px. */
     onTap: (Offset) -> Unit = {},
+    dragHandler: DragHandler? = null,
 ) {
     val tapScope = rememberCoroutineScope()
     val pendingTap = remember { arrayOfNulls<Job>(1) }
@@ -93,6 +105,7 @@ fun MapView(
     val step by rememberUpdatedState(onStep)
     val pending by rememberUpdatedState(onPinchPending)
     val tap by rememberUpdatedState(onTap)
+    val drag by rememberUpdatedState(dragHandler)
 
     Canvas(
         modifier
@@ -105,6 +118,9 @@ fun MapView(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     pendingTap[0]?.cancel()
+                    val dh = drag
+                    var drawing = dh != null
+                    dh?.start(down.position)
                     var moved = 0f
                     var pinch = 1f
                     var maxPointers = 1
@@ -127,6 +143,16 @@ fun MapView(
                         val span = if (pressed.size >= 2) {
                             pressed.sumOf { hypot(it.position.x - centroid.x, it.position.y - centroid.y).toDouble() }.toFloat() / pressed.size
                         } else 0f
+                        if (drawing && pressed.size >= 2) {
+                            dh?.cancel()
+                            drawing = false
+                        }
+                        if (drawing) {
+                            dh?.move(pressed[0].position)
+                            lastCount = 1
+                            lastCentroid = centroid
+                            continue
+                        }
                         // Only compare frames with the same set of fingers, otherwise the centroid jumps.
                         if (pressed.size == lastCount && lastCentroid.isSpecified) {
                             val d = centroid - lastCentroid
@@ -143,7 +169,11 @@ fun MapView(
                         maxPointers = max(maxPointers, pressed.size)
                     }
                     val centre = Offset(size.width / 2f, size.height / 2f)
-                    if (maxPointers >= 2) {
+                    if (drawing) {
+                        dh?.end()
+                    } else if (dh != null && maxPointers == 1) {
+                        // Stroke was cancelled; nothing else to do.
+                    } else if (maxPointers >= 2) {
                         pending(0)
                         val s = pinchStep(pinch)
                         if (s != 0) step(s, lastCentroid - centre)

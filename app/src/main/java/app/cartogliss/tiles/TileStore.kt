@@ -23,6 +23,12 @@ class TileStore(private val context: Context) {
             arrayOf(z.toString(), x.toString(), y.toString()),
         ).use { c -> if (c.moveToFirst()) c.getBlob(0) else null }
 
+    fun has(sourceId: String, z: Int, x: Int, y: Int): Boolean =
+        db(sourceId).readableDatabase.rawQuery(
+            "SELECT 1 FROM tiles WHERE z = ? AND x = ? AND y = ?",
+            arrayOf(z.toString(), x.toString(), y.toString()),
+        ).use { it.moveToFirst() }
+
     fun put(sourceId: String, z: Int, x: Int, y: Int, data: ByteArray) {
         val values = ContentValues().apply {
             put("z", z); put("x", x); put("y", y)

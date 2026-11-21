@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import app.cartogliss.ui.download.DownloadScreen
 import app.cartogliss.ui.screens.CacheScreen
 import app.cartogliss.ui.screens.KeysScreen
 import app.cartogliss.ui.screens.MapScreen
@@ -61,7 +62,7 @@ fun CartoGlissNavHost() {
         }
         composable(Routes.MENU) { MenuScreen(onNavigate = go, onBack = back) }
 
-        composable(Routes.DOWNLOAD) { PlaceholderScreen("Download maps", "Milestone 7", back) }
+        composable(Routes.DOWNLOAD) { DownloadScreen(onBack = back) }
         composable(Routes.SOURCES) {
             SourcesScreen(onOpen = { go(Routes.sourceDetail(it)) }, onAdd = { go(Routes.sourceEdit(null, false)) }, onBack = back)
         }

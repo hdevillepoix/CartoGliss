@@ -135,6 +135,15 @@ And of course a download button.
 > - For each toggled-on level, every tile that touches the painted area is downloaded. The estimate is the sum of tile counts across those levels, with an approximate size in MB.
 > - Downloads run as a WorkManager job with progress, per-source concurrency of 2, and an identifying User-Agent (`CartoGliss/<version>`).
 > - **Bulk download is disabled for OSM Standard** (OSMF tile usage policy). Viewing it still caches tiles.
+> - **Implementation (M7):**
+>   - The screen downloads from the map's current source. Modes are Move / **Paint** (default) / Rectangle / Erase. One finger draws in the drawing modes; two fingers always pan and pinch. Tapping paints one square.
+>   - The selection is stored as grid cells of mixed levels (painting at different zooms combines exactly), so per-level tile counts are exact. It survives leaving the screen, but not an app restart.
+>   - The level list shows a tile count per level, with all/none shortcuts. Only the view's zoom is selected at first.
+>   - The size estimate uses the average size of this source's cached tiles, or 25 kB if fewer than 50 are cached.
+>   - Above 50k tiles a warning about server quotas appears. Above 500k, downloading is refused.
+>   - Download jobs queue up and run one after another (WorkManager, foreground "dataSync" with a progress notification and Cancel). A "Wi-Fi only" switch is offered.
+>   - Already-cached and out-of-coverage tiles are skipped. HTTP 429/503 gets one retry after 10 s; other failures are counted and shown.
+>   - Downloaded tiles go into the same permanent cache as browsed ones.
 #### (multiple entries) List of starred map sources
 #### More maps
 This opens a list with all sources. Each source can be starred/unstarred so it appears in the main map menu.
