@@ -1,0 +1,145 @@
+{
+  "sources": [
+    {
+      "id": "ms-satellite",
+      "name": "Microsoft satellite",
+      "category": "General",
+      "urlTemplate": "https://ecn.t{s}.tiles.virtualearth.net/tiles/a{q}.jpeg?g=1",
+      "subdomains": ["0", "1", "2", "3"],
+      "tileSize": 256,
+      "minZoom": 1,
+      "maxZoom": 19,
+      "attribution": "© Microsoft",
+      "notes": "Unofficial Bing endpoint; may stop working without notice. Azure Maps is the official fallback."
+    },
+    {
+      "id": "azure-imagery",
+      "name": "Microsoft satellite (Azure Maps)",
+      "category": "General",
+      "urlTemplate": "https://atlas.microsoft.com/map/tile?api-version=2024-04-01&tilesetId=microsoft.imagery&zoom={z}&x={x}&y={y}&tileSize=512",
+      "headers": { "subscription-key": "{key}" },
+      "tileSize": 512,
+      "minZoom": 1,
+      "maxZoom": 19,
+      "keyProvider": "azure",
+      "attribution": "© Microsoft"
+    },
+    {
+      "id": "mapbox-satellite",
+      "name": "Mapbox satellite",
+      "category": "General",
+      "urlTemplate": "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token={key}",
+      "tileSize": 512,
+      "minZoom": 0,
+      "maxZoom": 19,
+      "keyProvider": "mapbox",
+      "attribution": "© Mapbox © Maxar"
+    },
+    {
+      "id": "osm-standard",
+      "name": "Standard OSM",
+      "category": "General",
+      "urlTemplate": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 19,
+      "attribution": "© OpenStreetMap contributors",
+      "bulkDownloadAllowed": false,
+      "notes": "OSMF tile usage policy: no bulk downloading."
+    },
+    {
+      "id": "tracestrack-topo",
+      "name": "Tracestrack Topo",
+      "category": "General",
+      "urlTemplate": "https://tile.tracestrack.com/topo_auto/{z}/{x}/{y}.webp?key={key}",
+      "tileSize": 512,
+      "minZoom": 0,
+      "maxZoom": 19,
+      "keyProvider": "tracestrack",
+      "attribution": "© Tracestrack © OpenStreetMap contributors",
+      "notes": "Tile size and max zoom are not documented; unverified."
+    },
+    {
+      "id": "tf-outdoors",
+      "name": "Outdoors (Thunderforest)",
+      "category": "Hiking",
+      "urlTemplate": "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}@2x.png?apikey={key}",
+      "tileSize": 512,
+      "minZoom": 0,
+      "maxZoom": 22,
+      "keyProvider": "thunderforest",
+      "attribution": "© Thunderforest © OpenStreetMap contributors"
+    },
+    {
+      "id": "tf-landscape",
+      "name": "Landscape (Thunderforest)",
+      "category": "Hiking",
+      "urlTemplate": "https://tile.thunderforest.com/landscape/{z}/{x}/{y}@2x.png?apikey={key}",
+      "tileSize": 512,
+      "minZoom": 0,
+      "maxZoom": 22,
+      "keyProvider": "thunderforest",
+      "attribution": "© Thunderforest © OpenStreetMap contributors"
+    },
+    {
+      "id": "opentopomap",
+      "name": "OpenTopoMap",
+      "category": "Hiking",
+      "urlTemplate": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      "subdomains": ["a", "b", "c"],
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 17,
+      "attribution": "© OpenTopoMap (CC-BY-SA) © OpenStreetMap contributors",
+      "notes": "Volunteer-run server."
+    },
+    {
+      "id": "cyclosm",
+      "name": "CyclOSM",
+      "category": "Biking",
+      "urlTemplate": "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+      "subdomains": ["a", "b", "c"],
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 20,
+      "attribution": "© CyclOSM, hosted by OSM France © OpenStreetMap contributors",
+      "bulkDownloadAllowed": false,
+      "notes": "Bulk download off until OSM France's tile policy is checked."
+    },
+    {
+      "id": "tf-cycle",
+      "name": "OpenCycleMap (Thunderforest)",
+      "category": "Biking",
+      "urlTemplate": "https://tile.thunderforest.com/cycle/{z}/{x}/{y}@2x.png?apikey={key}",
+      "tileSize": 512,
+      "minZoom": 0,
+      "maxZoom": 22,
+      "keyProvider": "thunderforest",
+      "attribution": "© Thunderforest © OpenStreetMap contributors"
+    },
+    {
+      "id": "os-outdoor",
+      "name": "Ordnance Survey Outdoor (UK)",
+      "category": "Local",
+      "urlTemplate": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key={key}",
+      "tileSize": 256,
+      "minZoom": 7,
+      "maxZoom": 16,
+      "keyProvider": "os",
+      "attribution": "Contains OS data © Crown copyright and database rights",
+      "coverage": { "south": 49.8, "west": -8.8, "north": 60.95, "east": 1.9 },
+      "notes": "z17–20 need a paid OS plan: raise the max zoom if you have one."
+    },
+    {
+      "id": "ga-topo-au",
+      "name": "Australia Topographic (GA)",
+      "category": "Local",
+      "urlTemplate": "https://services.ga.gov.au/gis/rest/services/Topographic_Base_Map/MapServer/WMTS/tile/1.0.0/Topographic_Base_Map/default/GoogleMapsCompatible/{z}/{y}/{x}.png",
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 18,
+      "attribution": "© Commonwealth of Australia (Geoscience Australia)",
+      "coverage": { "south": -50.0, "west": 100.1, "north": -2.4, "east": 169.2 }
+    }
+  ]
+}

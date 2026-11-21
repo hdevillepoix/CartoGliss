@@ -48,6 +48,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
 
     suspend fun setViewport(v: Viewport) = store.edit { it.writeViewport(v) }
 
+    /** Switch the map to another tile source, keeping the position. */
+    suspend fun setSource(sourceId: String) = store.edit { it[K.vpSource] = sourceId }
+
     private fun MutablePreferences.writeViewport(v: Viewport) {
         this[K.vpLat] = v.lat
         this[K.vpLon] = v.lon

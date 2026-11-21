@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -46,7 +47,6 @@ import app.cartogliss.location.Heading
 import app.cartogliss.map.MapViewport
 import app.cartogliss.settings.Settings
 import app.cartogliss.settings.Target
-import app.cartogliss.tiles.BuiltInSources
 import app.cartogliss.ui.map.CentreOnGpsButton
 import app.cartogliss.ui.map.MapOverlay
 import app.cartogliss.ui.map.MapView
@@ -92,15 +92,18 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
     val context = LocalContext.current
     val container = context.appContainer
     val scope = rememberCoroutineScope()
-    val source = BuiltInSources.byId(initial.viewport.sourceId)
     val tilePx = with(LocalDensity.current) { TILE_DP.toPx() }
+    val live by container.settings.settings.collectAsStateWithLifecycle(initial)
+    val allSources by container.sources.sources.collectAsStateWithLifecycle()
+    val source = remember(allSources, live.viewport.sourceId) { container.sources.resolve(live.viewport.sourceId) }
 
     var vp by remember { mutableStateOf(MapViewport.from(initial.viewport).clampZoom(source.minZoom, source.maxZoom)) }
     var overzoomMode by remember { mutableStateOf(false) }
     var pinchPending by remember { mutableIntStateOf(0) }
     var showStats by rememberSaveable { mutableStateOf(false) }
     var showPin by remember { mutableStateOf(false) }
-    val live by container.settings.settings.collectAsStateWithLifecycle(initial)
+    // A different source may have a narrower zoom range.
+    LaunchedEffect(source.minZoom, source.maxZoom) { vp = vp.clampZoom(source.minZoom, source.maxZoom) }
 
     // Location + heading run while this screen is visible.
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -139,11 +142,12 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
     }
 
     // Persist the viewport shortly after it stops changing, and when leaving the screen.
+    val currentSourceId by rememberUpdatedState(source.id)
     LaunchedEffect(Unit) {
-        snapshotFlow { vp }.debounce(500).collect { container.settings.setViewport(it.toViewport(source.id)) }
+        snapshotFlow { vp }.debounce(500).collect { container.settings.setViewport(it.toViewport(currentSourceId)) }
     }
     DisposableEffect(Unit) {
-        onDispose { container.appScope.launch { container.settings.setViewport(vp.toViewport(source.id)) } }
+        onDispose { container.appScope.launch { container.settings.setViewport(vp.toViewport(currentSourceId)) } }
     }
 
     val barState = StateBarState(

@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -67,7 +68,9 @@ fun MapView(
     val version by loader.version.collectAsState()
 
     val tiles = remember(viewport, size, tilePx) { viewport.visibleTiles(size.width, size.height, tilePx) }
-    val keys = remember(tiles, source.id) { tiles.map { TileKey(source.id, it.z, it.x, it.y) } }
+    val keys = remember(tiles, source) {
+        tiles.filter { source.covers(it.z, it.x, it.y) }.map { TileKey(source.id, it.z, it.x, it.y) }
+    }
 
     LaunchedEffect(keys, source) {
         // Request now, then keep retrying failed tiles while this view stays put.
@@ -161,6 +164,8 @@ fun MapView(
                     dstSize = IntSize(t.right - t.left, t.bottom - t.top),
                     filterQuality = FilterQuality.Low,
                 )
+            } else if (!source.covers(t.z, t.x, t.y)) {
+                drawOutOfCoverage(t)
             } else {
                 drawPlaceholder(t)
             }
@@ -186,5 +191,25 @@ private fun DrawScope.drawPlaceholder(t: TileOnScreen) {
         val y = t.top + h * i / 4f
         drawLine(PLACEHOLDER_GRID, Offset(x, t.top.toFloat()), Offset(x, t.bottom.toFloat()), stroke)
         drawLine(PLACEHOLDER_GRID, Offset(t.left.toFloat(), y), Offset(t.right.toFloat(), y), stroke)
+    }
+}
+
+private val OUT_OF_COVERAGE = Color(0xFFF2F2F2)
+private val OUT_OF_COVERAGE_HATCH = Color(0xFFDADADA)
+
+/** Outside the source's coverage box: pale with diagonal hatching, distinct from "not loaded yet". */
+private fun DrawScope.drawOutOfCoverage(t: TileOnScreen) {
+    val l = t.left.toFloat()
+    val tp = t.top.toFloat()
+    val w = (t.right - t.left).toFloat()
+    val h = (t.bottom - t.top).toFloat()
+    drawRect(OUT_OF_COVERAGE, topLeft = Offset(l, tp), size = Size(w, h))
+    clipRect(l, tp, l + w, tp + h) {
+        val step = w / 8f
+        var d = -h
+        while (d < w) {
+            drawLine(OUT_OF_COVERAGE_HATCH, Offset(l + d, tp + h), Offset(l + d + h, tp), 1f)
+            d += step
+        }
     }
 }

@@ -255,6 +255,15 @@ How the list evolves: the curated list ships **built into the app**, and the use
 - **Keys**: a source whose key provider has no key yet is greyed out in the source list until one is entered in Settings → Map server keys.
 - **Attribution** is **not drawn on the map**. It is shown only in the sources list (under each source's name, in "More maps"), and in the source detail/edit screen.
 - **Cache**: one SQLite file per source `id`.
+- **Implementation (M4):**
+  - The bundled list is `app/src/main/assets/sources.json`. Custom sources, max-zoom overrides and hidden flags live in `sources_user.json` in app storage. Custom ids look like `custom-1a2b3c4d`.
+  - A custom source can't reuse a built-in id.
+  - Menu: starred sources are listed under Maps. Tapping one switches the map (a check marks the current one). Sources whose key is missing are greyed out and can't be selected.
+  - Default stars: OSM Standard and OpenTopoMap.
+  - "More maps": grouped by category, with a star toggle per row, attribution under the name, and "needs X key" in red. Tapping a row opens its detail page (facts, notes, URL template, "Use this map", star, duplicate; plus max-zoom override and hide for built-ins, or edit and delete for custom sources). Hidden sources appear in a "Hidden" section at the end. A + button adds a custom source.
+  - Editing a custom source keeps its cached tiles. Clear the cache by hand if the URL changed.
+  - Entering an API key retries failed tiles straight away.
+  - Out-of-coverage tiles are drawn pale with diagonal hatching, and are never requested.
 
 Could it also do vector tiles?
 

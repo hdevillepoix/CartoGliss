@@ -7,12 +7,20 @@ import app.cartogliss.location.HeadingTracker
 import app.cartogliss.location.LocationTracker
 import app.cartogliss.settings.KeyProvider
 import app.cartogliss.settings.SettingsRepository
+import app.cartogliss.tiles.BuiltInSources
+import app.cartogliss.tiles.SourceCatalog
+import app.cartogliss.tiles.SourceRegistry
+import app.cartogliss.tiles.TileFetcher
 import app.cartogliss.tiles.TileLoader
 import app.cartogliss.tiles.TileStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import java.io.File
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import okhttp3.OkHttpClient
@@ -27,9 +35,10 @@ class AppContainer(context: Context) {
 
     val settings = SettingsRepository(context.settingsStore)
 
-    private val apiKeys = settings.settings
+    val apiKeys: StateFlow<Map<KeyProvider, String>> = settings.settings
         .map { it.apiKeys }
-        .stateIn(appScope, SharingStarted.Eagerly, emptyMap<KeyProvider, String>())
+        .distinctUntilChanged()
+        .stateIn(appScope, SharingStarted.Eagerly, emptyMap())
 
     val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -41,7 +50,21 @@ class AppContainer(context: Context) {
     val location = LocationTracker(context)
     val heading = HeadingTracker(context)
 
-    val tileLoader = TileLoader(tileStore, http, appScope) { apiKeys.value[it] }
+    val sources = SourceRegistry(
+        builtIns = runCatching {
+            SourceCatalog.parseBuiltIn(context.assets.open("sources.json").bufferedReader().use { it.readText() })
+        }.getOrElse { listOf(BuiltInSources.OSM_STANDARD) },
+        file = File(context.filesDir, "sources_user.json"),
+    )
+
+    val fetcher = TileFetcher(http) { apiKeys.value[it] }
+
+    val tileLoader = TileLoader(tileStore, fetcher, appScope)
+
+    init {
+        // A newly entered key should take effect without waiting for the retry delay.
+        appScope.launch { apiKeys.collect { tileLoader.clearFailures() } }
+    }
 }
 
 class CartoGlissApp : Application() {

@@ -51,6 +51,15 @@ class TileStore(private val context: Context) {
         w.execSQL("VACUUM")
     }
 
+    /** Ids of every source with a cache file on disk (including retired sources). */
+    fun storedSourceIds(): List<String> {
+        val dir = context.getDatabasePath("x").parentFile ?: return emptyList()
+        return dir.listFiles().orEmpty()
+            .map { it.name }
+            .filter { it.startsWith("tiles-") && it.endsWith(".db") }
+            .map { it.removePrefix("tiles-").removeSuffix(".db") }
+    }
+
     private fun dbFile(sourceId: String): File = context.getDatabasePath(fileName(sourceId))
 
     private fun fileName(sourceId: String) = "tiles-" + sourceId.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".db"
