@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import app.cartogliss.ui.screens.CacheScreen
 import app.cartogliss.ui.screens.KeysScreen
 import app.cartogliss.ui.screens.MapScreen
 import app.cartogliss.ui.screens.MenuScreen
@@ -49,6 +50,6 @@ fun CartoGlissNavHost() {
         composable(Routes.SETTINGS_KEYS) { KeysScreen(onBack = back) }
         composable(Routes.SETTINGS_UNITS) { UnitsScreen(onBack = back) }
         composable(Routes.SETTINGS_TRACK) { TrackSettingsScreen(onBack = back) }
-        composable(Routes.SETTINGS_CACHE) { PlaceholderScreen("Tile cache", "Milestone 1/4", back) }
+        composable(Routes.SETTINGS_CACHE) { CacheScreen(onBack = back) }
     }
 }
