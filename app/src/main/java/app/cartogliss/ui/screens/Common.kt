@@ -57,10 +57,9 @@ fun SectionHeader(text: String) {
 @Composable
 fun NavItem(text: String, supporting: String? = null, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(text) },
         supportingContent = supporting?.let { { Text(it) } },
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-    )
+    ) { Text(text) }
 }
 
 @Composable

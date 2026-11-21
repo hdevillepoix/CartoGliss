@@ -261,7 +261,7 @@ Does it make sense to use MapLibre Native?
 # Decisions summary (2026-11-21)
 | Topic | Decision |
 |---|---|
-| Stack | Kotlin + Jetpack Compose. minSdk 26. No Google Play Services. Toolchain (M0): Gradle 8.7, AGP 8.4.2, Kotlin 1.9.24, Compose BOM 2024.06, compile/target SDK 34 (what the dev machine has cached). Moving to the latest SDK is a later step. |
+| Stack | Kotlin + Jetpack Compose. minSdk 26, compileSdk 37.2, targetSdk 37. No Google Play Services. Toolchain (2026-11-21): Gradle 9.9.2, AGP 9.5.2 (built-in Kotlin), Kotlin 2.4.21 + Compose compiler plugin, Compose BOM 2026.11.01, OkHttp 5. |
 | Distribution | Personal / sideload. Any source can ship; the user is responsible for each provider's terms. |
 | Renderer | Custom Compose `Canvas` raster renderer. Web Mercator (EPSG:3857) XYZ, plus quadkey and WMTS-as-XYZ templates. |
 | Vector tiles | Not supported. |

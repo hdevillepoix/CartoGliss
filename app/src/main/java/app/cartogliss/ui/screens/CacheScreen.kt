@@ -47,12 +47,11 @@ fun CacheScreen(onBack: () -> Unit) {
             BuiltInSources.all.forEach { src ->
                 val i = info[src.id]
                 ListItem(
-                    headlineContent = { Text(src.name) },
                     supportingContent = { Text(if (i == null) "…" else "${i.tiles} tiles · ${formatBytes(i.bytes)}") },
                     trailingContent = {
                         TextButton(onClick = { confirm = src }, enabled = (i?.tiles ?: 0) > 0) { Text("Clear") }
                     },
-                )
+                ) { Text(src.name) }
             }
         }
     }

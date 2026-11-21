@@ -7,6 +7,7 @@ import android.util.Log
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import app.cartogliss.BuildConfig
 import app.cartogliss.settings.KeyProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +33,6 @@ class TileLoader(
     private val store: TileStore,
     private val http: OkHttpClient,
     private val scope: CoroutineScope,
-    /** Identifying User-Agent (required by the OSM tile policy). */
-    private val userAgent: String,
     private val apiKey: (KeyProvider) -> String?,
 ) {
     private class Entry(val bitmap: Bitmap) {
@@ -97,7 +96,7 @@ class TileLoader(
                 markFailed(k, permanent = false)
                 return
             }
-            val request = Request.Builder().url(url).header("User-Agent", userAgent).apply {
+            val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).apply {
                 TileUrl.headers(source, key).forEach { (n, v) -> header(n, v) }
             }.build()
             try {
@@ -107,7 +106,7 @@ class TileLoader(
                         markFailed(k, permanent = resp.code == 404)
                         return
                     }
-                    val bytes = resp.body?.bytes() ?: return markFailed(k, permanent = false)
+                    val bytes = resp.body.bytes()
                     if (publish(k, bytes)) {
                         store.put(k.sourceId, k.z, k.x, k.y, bytes)
                     } else {
@@ -135,6 +134,9 @@ class TileLoader(
     companion object {
         private const val TAG = "TileLoader"
         const val RETRY_AFTER_MS = 15_000L
+
+        /** Identifying User-Agent (required by the OSM tile policy). */
+        val USER_AGENT = "CartoGliss/${BuildConfig.VERSION_NAME} (Android; personal use)"
         private const val NETWORK_CONCURRENCY = 2
 
         private fun memoryBudgetBytes(): Int =

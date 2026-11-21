@@ -36,12 +36,7 @@ class AppContainer(context: Context) {
 
     val tileStore = TileStore(context)
 
-    private val versionName: String =
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "dev"
-
-    val tileLoader = TileLoader(tileStore, http, appScope, "CartoGliss/$versionName (Android; personal use)") {
-        apiKeys.value[it]
-    }
+    val tileLoader = TileLoader(tileStore, http, appScope) { apiKeys.value[it] }
 }
 
 class CartoGlissApp : Application() {
