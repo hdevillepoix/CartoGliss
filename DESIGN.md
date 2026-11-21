@@ -147,6 +147,17 @@ The space bar in those field should convert to the appropriate next separator (d
 It should let the user select which KML the waypoint should be saved in.
 
 > **Decision:** one parser accepts DD, DDM and DMS, with either N/S/E/W letters or a sign. Pressing space moves to the next separator (`°` → `'` → `"`).
+> Only the last component may have decimals, and minutes and seconds must be under 60. A space typed right after a digit becomes the next unused separator; anywhere else it stays a space. A preview line shows the parsed value in your angle format. Coordinates are shown with ASCII `'` and `"`, hemisphere letter first (e.g. `N 45°07.408'`).
+
+> **Implementation (M5):**
+> - Collections are `.kml` files in app storage (`files/kml/`). Importing copies the file in; a KMZ is unpacked to its `doc.kml` (or its first `.kml`). Importing accepts any file type, because many file managers label KML as octet-stream, and the file must parse before it's kept.
+> - Imported files are capped at 50 MB, and DTDs/external entities are refused.
+> - Active collections are remembered in settings; new and imported collections start active.
+> - Collections can also be created empty ("New") and deleted (with confirmation).
+> - Adding a waypoint appends a `<Placemark>` to the first `<Document>` (or `<Folder>`) and rewrites the file through a temp file and rename, without re-indenting it.
+> - On the map: lines and areas use the KML colour and width (defaults: magenta lines, translucent magenta fill, orange waypoints). Waypoint names are drawn with a white halo, but are skipped when more than 300 are on screen.
+> - Tapping near a waypoint (within 24 dp) opens its details with "Go To". The tap is acted on only after the double-tap timeout, so double-tap zoom still works.
+> - Browse: search by name. Sorted by distance when there is a fix, by name otherwise. Each waypoint offers "Go To" or "Show on map".
 
 ### Tracks
 #### Browse

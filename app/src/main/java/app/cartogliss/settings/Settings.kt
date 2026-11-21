@@ -68,8 +68,12 @@ data class Settings(
     val target: Target? = null,
     /** First launch: whole world, OSM Standard, z2. Afterwards, the last viewport. */
     val viewport: Viewport = Viewport(),
+    /** File names of the KML collections shown on the map. */
+    val activeKml: Set<String> = DEFAULT_ACTIVE_KML,
 ) {
     companion object {
         val DEFAULT_STARRED = setOf("osm-standard", "opentopomap")
+        const val DEFAULT_COLLECTION = "My waypoints.kml"
+        val DEFAULT_ACTIVE_KML = setOf(DEFAULT_COLLECTION)
     }
 }

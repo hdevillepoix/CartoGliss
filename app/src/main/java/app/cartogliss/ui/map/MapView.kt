@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -31,7 +32,9 @@ import app.cartogliss.map.TileOnScreen
 import app.cartogliss.tiles.TileKey
 import app.cartogliss.tiles.TileLoader
 import app.cartogliss.tiles.TileSource
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.hypot
 import kotlin.math.max
 
@@ -61,7 +64,12 @@ fun MapView(
     onPinchPending: (Int) -> Unit,
     overlay: MapOverlay,
     modifier: Modifier = Modifier,
+    kml: KmlLayerData = KmlLayerData.EMPTY,
+    /** A confirmed single tap (not the first half of a double-tap), in screen px. */
+    onTap: (Offset) -> Unit = {},
 ) {
+    val tapScope = rememberCoroutineScope()
+    val pendingTap = remember { arrayOfNulls<Job>(1) }
     val tilePx = with(LocalDensity.current) { TILE_DP.toPx() }
     val doubleTapSlop = with(LocalDensity.current) { 48.dp.toPx() }
     var size by remember { mutableStateOf(IntSize.Zero) }
@@ -83,6 +91,7 @@ fun MapView(
     val pan by rememberUpdatedState(onPan)
     val step by rememberUpdatedState(onStep)
     val pending by rememberUpdatedState(onPinchPending)
+    val tap by rememberUpdatedState(onTap)
 
     Canvas(
         modifier
@@ -94,6 +103,7 @@ fun MapView(
                 var lastTapPos = Offset.Zero
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    pendingTap[0]?.cancel()
                     var moved = 0f
                     var pinch = 1f
                     var maxPointers = 1
@@ -141,11 +151,18 @@ fun MapView(
                         val isDouble = upTime - lastTapTime < doubleTapMs &&
                             (down.position - lastTapPos).getDistance() < doubleTapSlop
                         if (isDouble) {
+                            pendingTap[0]?.cancel()
                             step(1, down.position - centre)
                             lastTapTime = 0L
                         } else {
                             lastTapTime = upTime
                             lastTapPos = down.position
+                            val at = down.position
+                            pendingTap[0]?.cancel()
+                            pendingTap[0] = tapScope.launch {
+                                delay(doubleTapMs)
+                                tap(at)
+                            }
                         }
                     }
                 }
@@ -170,6 +187,7 @@ fun MapView(
                 drawPlaceholder(t)
             }
         }
+        drawKml(viewport, tilePx, kml)
         drawOverlays(viewport, tilePx, overlay)
     }
 }

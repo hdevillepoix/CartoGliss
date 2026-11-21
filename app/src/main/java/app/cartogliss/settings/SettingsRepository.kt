@@ -48,6 +48,17 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
 
     suspend fun setViewport(v: Viewport) = store.edit { it.writeViewport(v) }
 
+    /** Move the map centre (keeps zoom and source); the map picks it up when it next opens. */
+    suspend fun setCentre(lat: Double, lon: Double) = store.edit {
+        it[K.vpLat] = lat
+        it[K.vpLon] = lon
+    }
+
+    suspend fun setKmlActive(fileName: String, active: Boolean) = store.edit {
+        val current = it[K.activeKml] ?: Settings.DEFAULT_ACTIVE_KML
+        it[K.activeKml] = if (active) current + fileName else current - fileName
+    }
+
     /** Switch the map to another tile source, keeping the position. */
     suspend fun setSource(sourceId: String) = store.edit { it[K.vpSource] = sourceId }
 
@@ -84,6 +95,7 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
                 overzoom = overzoom,
                 sourceId = p[K.vpSource] ?: dv.sourceId,
             ),
+            activeKml = p[K.activeKml] ?: d.activeKml,
         )
     }
 
@@ -107,5 +119,6 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val vpZoom = intPreferencesKey("viewport.zoom")
         val vpOverzoom = intPreferencesKey("viewport.overzoom")
         val vpSource = stringPreferencesKey("viewport.source")
+        val activeKml = stringSetPreferencesKey("kml.active")
     }
 }

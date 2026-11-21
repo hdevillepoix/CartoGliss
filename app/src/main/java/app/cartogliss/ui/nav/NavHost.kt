@@ -16,6 +16,9 @@ import app.cartogliss.ui.screens.SettingsScreen
 import app.cartogliss.ui.screens.TrackSettingsScreen
 import app.cartogliss.ui.screens.UnitsScreen
 import app.cartogliss.ui.sources.SourceDetailScreen
+import app.cartogliss.ui.waypoints.AddWaypointScreen
+import app.cartogliss.ui.waypoints.CollectionsScreen
+import app.cartogliss.ui.waypoints.WaypointBrowseScreen
 import app.cartogliss.ui.sources.SourceEditScreen
 import app.cartogliss.ui.sources.SourcesScreen
 
@@ -83,15 +86,21 @@ fun CartoGlissNavHost() {
                 onBack = back,
             )
         }
-        composable(Routes.WAYPOINTS_BROWSE) { PlaceholderScreen("Waypoints", "Milestone 5", back) }
-        composable(Routes.WAYPOINTS_COLLECTIONS) { PlaceholderScreen("Collections", "Milestone 5", back) }
+        composable(Routes.WAYPOINTS_BROWSE) { WaypointBrowseScreen(onToMap = toMap, onBack = back) }
+        composable(Routes.WAYPOINTS_COLLECTIONS) { CollectionsScreen(onBack = back) }
         composable(
             Routes.WAYPOINTS_ADD_PATTERN,
             arguments = listOf(
                 navArgument("lat") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("lon") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
-        ) { PlaceholderScreen("Add waypoint", "Milestone 5", back) }
+        ) { e ->
+            AddWaypointScreen(
+                initialLat = e.arguments?.getString("lat")?.toDoubleOrNull(),
+                initialLon = e.arguments?.getString("lon")?.toDoubleOrNull(),
+                onBack = back,
+            )
+        }
         composable(Routes.TRACKS_BROWSE) { PlaceholderScreen("Tracks", "Milestone 6", back) }
 
         composable(Routes.SETTINGS) { SettingsScreen(onNavigate = go, onBack = back) }

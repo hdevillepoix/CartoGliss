@@ -3,6 +3,7 @@ package app.cartogliss
 import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import app.cartogliss.kml.KmlRepository
 import app.cartogliss.location.HeadingTracker
 import app.cartogliss.location.LocationTracker
 import app.cartogliss.settings.KeyProvider
@@ -46,6 +47,8 @@ class AppContainer(context: Context) {
         .build()
 
     val tileStore = TileStore(context)
+
+    val kml = KmlRepository(File(context.filesDir, "kml"), settings, appScope)
 
     val location = LocationTracker(context)
     val heading = HeadingTracker(context)

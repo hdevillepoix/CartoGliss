@@ -58,6 +58,12 @@ import app.cartogliss.ui.map.StateBarState
 import app.cartogliss.ui.map.TILE_DP
 import app.cartogliss.ui.map.ZoomControls
 import app.cartogliss.ui.stats.StatsView
+import app.cartogliss.ui.waypoints.WaypointDialog
+import app.cartogliss.ui.map.KmlLayerData
+import app.cartogliss.ui.map.hitTest
+import app.cartogliss.kml.Waypoint
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -102,6 +108,11 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
     var pinchPending by remember { mutableIntStateOf(0) }
     var showStats by rememberSaveable { mutableStateOf(false) }
     var showPin by remember { mutableStateOf(false) }
+    var tappedWaypoint by remember { mutableStateOf<Waypoint?>(null) }
+    val collections by container.kml.collections.collectAsStateWithLifecycle()
+    val kmlLayer = remember(collections) { KmlLayerData.from(collections) }
+    var mapSize by remember { mutableStateOf(IntSize.Zero) }
+    val tapRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
     // A different source may have a narrower zoom range.
     LaunchedEffect(source.minZoom, source.maxZoom) { vp = vp.clampZoom(source.minZoom, source.maxZoom) }
 
@@ -184,7 +195,11 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
                 onStep = { s, f -> step(s, f.x, f.y) },
                 onPinchPending = { pinchPending = it },
                 overlay = overlay,
-                modifier = Modifier.fillMaxSize(),
+                kml = kmlLayer,
+                onTap = { at ->
+                    kmlLayer.hitTest(vp, tilePx, mapSize.width, mapSize.height, at, tapRadiusPx)?.let { tappedWaypoint = it }
+                },
+                modifier = Modifier.fillMaxSize().onSizeChanged { mapSize = it },
             )
 
             if (pinchPending != 0) {
@@ -235,6 +250,20 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
             }
         }
         StateBar(barState, barActions)
+    }
+
+    tappedWaypoint?.let { wp ->
+        WaypointDialog(
+            wp = wp,
+            fix = fix,
+            angleFormat = live.angleFormat,
+            distanceUnit = live.distanceUnit,
+            onGoTo = {
+                tappedWaypoint = null
+                scope.launch { container.settings.setTarget(Target(wp.lat, wp.lon, wp.name)) }
+            },
+            onDismiss = { tappedWaypoint = null },
+        )
     }
 
     if (showPin) {
