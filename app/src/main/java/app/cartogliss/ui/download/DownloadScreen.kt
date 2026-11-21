@@ -274,7 +274,7 @@ fun DownloadScreen(onBack: () -> Unit) {
             }
 
             // Estimate and actions.
-            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding().padding(12.dp)) {
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding().padding(12.dp)) {
                 val bytes = total * avgTileBytes
                 Text(
                     if (area.isEmpty()) "Paint the area to download (squares are selected as you drag)."
