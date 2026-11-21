@@ -52,7 +52,7 @@ class SettingsRepositoryTest {
     @Test
     fun defaults_matchDesign() = runTest(UnconfinedTestDispatcher()) {
         val s = repo(backgroundScope).settings.first()
-        assertEquals(Viewport(0.0, 0.0, 2, 1, "osm-standard"), s.viewport)
+        assertEquals(Viewport(0.0, 0.0, 2, 1.0, "osm-standard"), s.viewport)
         assertEquals(DistanceUnit.METRIC, s.distanceUnit)
         assertNull(s.target)
         assertTrue(s.apiKeys.isEmpty())
@@ -69,7 +69,7 @@ class SettingsRepositoryTest {
         r.setStarred("opentopomap", false)
         r.setTrackSettings(TrackSettings(10, 20, 50))
         r.setTarget(Target(51.5, -0.12, "Home"))
-        r.setViewport(Viewport(45.0, 6.0, 14, 4, "opentopomap"))
+        r.setViewport(Viewport(45.0, 6.0, 14, 0.5, "opentopomap"))
 
         val s = r.settings.first()
         assertEquals(DistanceUnit.NAUTICAL, s.distanceUnit)
@@ -79,7 +79,7 @@ class SettingsRepositoryTest {
         assertEquals(setOf("osm-standard", "cyclosm"), s.starredSources)
         assertEquals(TrackSettings(10, 20, 50), s.track)
         assertEquals(Target(51.5, -0.12, "Home"), s.target)
-        assertEquals(Viewport(45.0, 6.0, 14, 4, "opentopomap"), s.viewport)
+        assertEquals(Viewport(45.0, 6.0, 14, 0.5, "opentopomap"), s.viewport)
     }
 
     @Test
@@ -97,7 +97,7 @@ class SettingsRepositoryTest {
     @Test
     fun invalidOverzoom_fallsBackToOne() = runTest(UnconfinedTestDispatcher()) {
         val r = repo(backgroundScope)
-        r.setViewport(Viewport(overzoom = 3))
-        assertEquals(1, r.settings.first().viewport.overzoom)
+        r.setViewport(Viewport(overzoom = 3.0))
+        assertEquals(1.0, r.settings.first().viewport.overzoom, 0.0)
     }
 }

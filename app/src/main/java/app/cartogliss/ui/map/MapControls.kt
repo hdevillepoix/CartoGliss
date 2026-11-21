@@ -76,7 +76,7 @@ fun ZoomControls(
             ) {
                 TextButton(onClick = onToggle, modifier = Modifier.size(width = 56.dp, height = 36.dp)) {
                     Text(
-                        "${vp.zoom}x${vp.overzoom}",
+                        "${vp.zoom}x${overzoomLabel(vp.overzoom)}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (overzoomMode) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -226,3 +226,6 @@ fun RecordIcon(mode: RecordMode, tint: Color, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** "½", "1", "2", … */
+fun overzoomLabel(m: Double): String = if (m == 0.5) "½" else m.toInt().toString()

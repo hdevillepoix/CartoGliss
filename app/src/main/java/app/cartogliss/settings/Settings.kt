@@ -52,13 +52,13 @@ data class Viewport(
     val lat: Double = 0.0,
     val lon: Double = 0.0,
     val zoom: Int = 2,
-    /** Overzoom factor M ∈ {1, 2, 4, 8}. */
-    val overzoom: Int = 1,
+    /** Overzoom factor M ∈ {0.5, 1, 2, 4, 8} (0.5 draws the tiles at half size). */
+    val overzoom: Double = 1.0,
     val sourceId: String = DEFAULT_SOURCE_ID,
 ) {
     companion object {
         const val DEFAULT_SOURCE_ID = "osm-standard"
-        val ALLOWED_OVERZOOM = listOf(1, 2, 4, 8)
+        val ALLOWED_OVERZOOM = listOf(0.5, 1.0, 2.0, 4.0, 8.0)
     }
 }
 

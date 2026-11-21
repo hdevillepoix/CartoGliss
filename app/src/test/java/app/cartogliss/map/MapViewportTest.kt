@@ -29,11 +29,26 @@ class MapViewportTest {
         var v = MapViewport(0.5, 0.5, zoom = 12)
         val seen = mutableListOf(v.overzoom)
         repeat(5) { v = v.stepped(1, true, tilePx, 0, 19); seen += v.overzoom }
-        assertEquals(listOf(1, 2, 4, 8, 8, 8), seen)
+        assertEquals(listOf(1.0, 2.0, 4.0, 8.0, 8.0, 8.0), seen)
         assertEquals(12, v.zoom)
         v = v.stepped(-1, true, tilePx, 0, 19)
-        assertEquals(4, v.overzoom)
+        assertEquals(4.0, v.overzoom, 0.0)
         assertTrue(v.canStep(1, true, 0, 19))
+    }
+
+    @Test
+    fun overzoomMode_goesDownToHalf() {
+        var v = MapViewport(0.5, 0.5, zoom = 12)
+        v = v.stepped(-1, true, tilePx, 0, 19)
+        assertEquals(0.5, v.overzoom, 0.0)
+        assertEquals(12, v.zoom)
+        assertFalse(v.canStep(-1, true, 0, 19))
+        assertEquals(v, v.stepped(-1, true, tilePx, 0, 19))
+        // Half-size tiles: twice as many across the screen.
+        val half = v.visibleTiles(1024, 1024, tilePx).map { it.x }.toSet().size
+        val one = v.copy(overzoom = 1.0).visibleTiles(1024, 1024, tilePx).map { it.x }.toSet().size
+        assertTrue(half >= 2 * one - 1)
+        assertEquals((1L shl 12) * 0.5 * tilePx, v.scale(tilePx), 1e-6)
     }
 
     @Test
@@ -54,7 +69,7 @@ class MapViewportTest {
 
     @Test
     fun step_keepsFocusPointFixed() {
-        val v = MapViewport(0.3, 0.4, zoom = 10, overzoom = 1)
+        val v = MapViewport(0.3, 0.4, zoom = 10, overzoom = 1.0)
         val fx = 100f
         val fy = -50f
         val before = Pair(v.mx + fx / v.scale(tilePx), v.my + fy / v.scale(tilePx))
@@ -66,7 +81,7 @@ class MapViewportTest {
 
     @Test
     fun visibleTiles_onlyCurrentLevel_coverScreen_withoutSeams() {
-        val v = MapViewport(0.5, 0.5, zoom = 3, overzoom = 2)
+        val v = MapViewport(0.5, 0.5, zoom = 3, overzoom = 2.0)
         val tiles = v.visibleTiles(1080, 2000, tilePx)
         assertTrue(tiles.isNotEmpty())
         assertTrue(tiles.all { it.z == 3 })

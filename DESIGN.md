@@ -24,6 +24,7 @@ A target GPS button will center the map on current user device location.
 > - The map is always north-up. It never rotates.
 > - A tile that isn't loaded is drawn as a neutral placeholder (light grey with a fine grid). It is never filled from another zoom level.
 > - Overzoom factor M ∈ {1, 2, 4, 8} and is **manual only**: it changes only while the NxM toggle is red. In normal mode + stops at the source's max zoom.
+> - **Change (2026-11-21): M can also be ½.** In red mode, − from M = 1 goes to M = ½: tiles of level N are drawn at 128 dp, showing four times the area with the same tiles and no zoom-level change (no inference from other levels). The toggle shows `Nx½`. Pinch and double-tap step through ½ → 1 → 2 → 4 → 8 the same way. Saved as a double (`viewport.overzoomFactor`); the old integer key is still read once.
 > - Overzoom scales up the tiles of level N. No other level is fetched.
 > - Pinch: once the pinch passes a threshold, exactly ±1 step is applied on release (zoom level, or overzoom when red mode is on). Nothing between levels is ever drawn. Double-tap = +1 step.
 > - Tile size: each source declares 256 or 512 px. A tile is always drawn at 256 dp × M, so 512 px tiles act as high-DPI tiles.
@@ -355,7 +356,7 @@ Does it make sense to use MapLibre Native?
 | Source list | Curated built-in list plus an in-app "Add custom source" form. Stable ids. No overlays in v1. OS = Outdoor_3857 only. |
 | Orientation | Always north-up. |
 | Zoom | Whole levels only. A missing tile shows a placeholder and is never inferred from another level. |
-| Overzoom | M ∈ {1,2,4,8}, manual only through the red NxM toggle. |
+| Overzoom | M ∈ {½,1,2,4,8}, manual only through the red NxM toggle. |
 | Gestures | Pan 1:1, no fling. Pinch snaps ±1 step on release. Double-tap = +1. |
 | Tile cache | Kept forever: no automatic removal, no automatic refresh. Cache first, network only on a miss. Manual clear per source. |
 | KML | Points + lines + polygons with basic styles. KMZ import. The files are the source of truth. |

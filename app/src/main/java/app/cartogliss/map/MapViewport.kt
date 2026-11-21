@@ -9,7 +9,7 @@ data class TileOnScreen(val z: Int, val x: Int, val y: Int, val left: Int, val t
 
 /**
  * Discrete map viewport: centre in normalized Web Mercator coordinates, integer zoom level N,
- * and overzoom factor M ∈ {1, 2, 4, 8}.
+ * and overzoom factor M ∈ {0.5, 1, 2, 4, 8} (0.5: tiles of level N drawn at half size).
  *
  * `tilePx` is the on-screen size, in pixels, of one tile at M = 1 (256 dp × density).
  */
@@ -17,7 +17,7 @@ data class MapViewport(
     val mx: Double,
     val my: Double,
     val zoom: Int,
-    val overzoom: Int = 1,
+    val overzoom: Double = 1.0,
 ) {
     val lat: Double get() = TileMath.yToLat(my)
     val lon: Double get() = TileMath.xToLon(mx)
@@ -33,7 +33,7 @@ data class MapViewport(
 
     /**
      * Apply [steps] zoom steps (or overzoom steps in overzoom mode), keeping the point at screen
-     * offset (fx, fy) from the centre fixed. Zoom is clamped to [minZoom, maxZoom]; overzoom to {1,2,4,8}.
+     * offset (fx, fy) from the centre fixed. Zoom is clamped to [minZoom, maxZoom]; overzoom to {0.5,1,2,4,8}.
      */
     fun stepped(
         steps: Int,
@@ -131,7 +131,7 @@ data class MapViewport(
             mx = TileMath.wrapX(TileMath.lonToX(v.lon)),
             my = TileMath.latToY(v.lat),
             zoom = v.zoom,
-            overzoom = v.overzoom.takeIf { it in OVERZOOMS } ?: 1,
+            overzoom = v.overzoom.takeIf { it in OVERZOOMS } ?: 1.0,
         )
     }
 }

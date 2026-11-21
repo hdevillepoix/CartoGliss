@@ -84,7 +84,8 @@ class SettingsRepository(
         this[K.vpLat] = v.lat
         this[K.vpLon] = v.lon
         this[K.vpZoom] = v.zoom
-        this[K.vpOverzoom] = v.overzoom
+        this[K.vpOverzoomF] = v.overzoom
+        remove(K.vpOverzoom)
         this[K.vpSource] = v.sourceId
     }
 
@@ -93,7 +94,8 @@ class SettingsRepository(
         val lat = p[K.targetLat]
         val lon = p[K.targetLon]
         val dv = d.viewport
-        val overzoom = p[K.vpOverzoom]?.takeIf { it in Viewport.ALLOWED_OVERZOOM } ?: dv.overzoom
+        // viewport.overzoom (Int) is the pre-0.5 key, still read once after an update.
+        val overzoom = (p[K.vpOverzoomF] ?: p[K.vpOverzoom]?.toDouble())?.takeIf { it in Viewport.ALLOWED_OVERZOOM } ?: dv.overzoom
         return Settings(
             distanceUnit = enumOr(p[K.distanceUnit], d.distanceUnit),
             speedUnit = enumOr(p[K.speedUnit], d.speedUnit),
@@ -143,6 +145,7 @@ class SettingsRepository(
         val vpLon = doublePreferencesKey("viewport.lon")
         val vpZoom = intPreferencesKey("viewport.zoom")
         val vpOverzoom = intPreferencesKey("viewport.overzoom")
+        val vpOverzoomF = doublePreferencesKey("viewport.overzoomFactor")
         val vpSource = stringPreferencesKey("viewport.source")
         val activeKml = stringSetPreferencesKey("kml.active")
         val shownTracks = stringSetPreferencesKey("tracks.shown")

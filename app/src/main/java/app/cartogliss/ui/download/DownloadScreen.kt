@@ -101,7 +101,7 @@ fun DownloadScreen(onBack: () -> Unit) {
     val keys by container.apiKeys.collectAsStateWithLifecycle()
     val tilePx = with(LocalDensity.current) { TILE_DP.toPx() }
 
-    var vp by remember { mutableStateOf(MapViewport.from(s.viewport).copy(overzoom = 1).clampZoom(source.minZoom, source.maxZoom)) }
+    var vp by remember { mutableStateOf(MapViewport.from(s.viewport).copy(overzoom = 1.0).clampZoom(source.minZoom, source.maxZoom)) }
     var mode by remember { mutableStateOf(Mode.PAINT) }
     val area = DownloadSelection.area
     var version by remember { mutableIntStateOf(0) } // bumped on every selection change
