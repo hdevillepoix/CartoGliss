@@ -69,7 +69,7 @@ direction of movement is indicated by an arrow (triangle with no fill).
 A scale is in the bottom right of the map. it is always the same size on the screen, but the number it corresponds to changes.
 
 > **Decision:** the scale bar is a fixed 2 cm on screen. Its label is the ground distance at the centre latitude, rounded to 2 significant figures, in the chosen distance unit.
-> Short distances switch to a smaller unit: m below 1 km; ft below 0.1 mi; m below 0.1 NM. The bar is drawn black with a white halo, above the state-bar area (M2).
+> Short distances switch to a smaller unit below 1 of the large one: m below 1 km, yd below 1 mi, m below 1 NM (changed 2026-11-21 from ft below 0.1 mi and m below 0.1 NM). The same rule applies to every distance label; altitude stays in ft with miles. The bar is drawn black with a white halo, above the state-bar area (M2).
 
 The center of the map is indicated by a thin black crosshair.
 
