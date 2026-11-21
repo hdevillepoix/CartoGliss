@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.cartogliss.BuiltInKeys
 import app.cartogliss.appContainer
 import app.cartogliss.settings.AngleFormat
 import app.cartogliss.settings.DistanceUnit
@@ -41,7 +43,8 @@ fun SettingsScreen(onNavigate: (String) -> Unit, onBack: () -> Unit) {
                 onNavigate(Routes.SETTINGS_KEYS)
             }
             NavItem("Units", "Distance, speed, angle format") { onNavigate(Routes.SETTINGS_UNITS) }
-            NavItem("Track recording", "Interval, distance, accuracy filter") { onNavigate(Routes.SETTINGS_TRACK) }
+            NavItem("Track recording", "Interval, distance, accuracy filter, write batch") { onNavigate(Routes.SETTINGS_TRACK) }
+            NavItem("Storage folder", "Where GPX tracks and KML waypoints are kept") { onNavigate(Routes.SETTINGS_STORAGE) }
             NavItem("Tile cache", "Size and clearing per source") { onNavigate(Routes.SETTINGS_CACHE) }
         }
     }
@@ -63,7 +66,8 @@ fun KeysScreen(onBack: () -> Unit) {
         WithSettings { s ->
             Column(Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
                 KeyProvider.entries.forEach { provider ->
-                    var text by remember { mutableStateOf(s.apiKeys[provider].orEmpty()) }
+                    var text by remember { mutableStateOf(s.userKeys[provider].orEmpty()) }
+                    val builtIn = BuiltInKeys.map[provider] != null
                     OutlinedTextField(
                         value = text,
                         onValueChange = {
@@ -71,6 +75,8 @@ fun KeysScreen(onBack: () -> Unit) {
                             scope.launch { repo.setApiKey(provider, it) }
                         },
                         label = { Text(provider.label) },
+                        placeholder = if (builtIn) ({ Text("Built-in key") }) else null,
+                        supportingText = if (builtIn && text.isBlank()) ({ Text("Using the key built into this APK. Type one to override it.") }) else null,
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     )
@@ -132,6 +138,13 @@ fun TrackSettingsScreen(onBack: () -> Unit) {
                 IntField("Minimum time between points (s)", track.minIntervalS) { save(track.copy(minIntervalS = it)) }
                 IntField("Minimum distance between points (m)", track.minDistanceM) { save(track.copy(minDistanceM = it)) }
                 IntField("Drop fixes worse than (m accuracy)", track.maxAccuracyM) { save(track.copy(maxAccuracyM = it)) }
+                IntField("Points kept in memory before writing to storage", track.bufferPoints) { save(track.copy(bufferPoints = it.coerceAtLeast(1))) }
+                Text(
+                    "Points are written in batches (also every 2 minutes, and on pause or finish). If Android kills the app, " +
+                        "the points not yet written are lost. 1 = write every point.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
     }

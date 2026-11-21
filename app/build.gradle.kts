@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+/**
+ * Optional built-in API keys, from the gitignored keys.env at the repo root (KEY=value lines, see
+ * keys.env.example) or from environment variables of the same names. Missing keys build as "".
+ */
+val keysFile = rootProject.file("keys.env")
+val keyProps = Properties().apply { if (keysFile.exists()) keysFile.reader().use { load(it) } }
+fun builtInKey(name: String): String =
+    (keyProps.getProperty(name)?.takeIf { it.isNotBlank() } ?: System.getenv(name) ?: "").trim().removeSurrounding("\"")
+fun quoted(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+val keyNames = listOf("THUNDERFOREST", "MAPBOX", "TRACESTRACK", "OS", "AZURE")
 
 android {
     namespace = "app.cartogliss"
@@ -16,6 +29,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        keyNames.forEach { buildConfigField("String", "KEY_$it", quoted(builtInKey("${it}_KEY"))) }
     }
 
     buildTypes {

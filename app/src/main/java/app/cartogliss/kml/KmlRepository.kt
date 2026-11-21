@@ -5,6 +5,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import app.cartogliss.settings.Settings
 import app.cartogliss.settings.SettingsRepository
+import app.cartogliss.storage.DocDir
+import app.cartogliss.storage.Storage
+import app.cartogliss.storage.uniqueName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
+import kotlinx.coroutines.flow.filterNotNull
 
 data class KmlCollection(
-    /** File name in app storage, e.g. "My waypoints.kml". Used as the id. */
+    /** File name in the waypoints folder, e.g. "My waypoints.kml". Used as the id. */
     val id: String,
     val title: String,
     val active: Boolean,
@@ -36,18 +39,22 @@ data class KmlCollection(
 data class Waypoint(val name: String, val lat: Double, val lon: Double, val description: String?, val collectionId: String, val collectionTitle: String)
 
 /**
- * KML collections. The files in app storage are the source of truth (DESIGN.md); this keeps a parsed
- * copy per file, re-parsed when the file changes.
+ * KML collections. The files in the waypoints folder are the source of truth (DESIGN.md); this keeps a
+ * parsed copy per file, re-parsed when the file changes. Files dropped into the folder by other apps
+ * appear on the next [refresh].
  */
 class KmlRepository(
-    private val dir: File,
+    private val storage: Storage,
     private val settings: SettingsRepository,
     scope: CoroutineScope,
 ) {
-    private class Parsed(val modified: Long, val doc: KmlDocument?, val error: String?)
+    private class Parsed(val stamp: Pair<Long, Long>, val doc: KmlDocument?, val error: String?)
 
     private val mutex = Mutex()
     private val parsed = MutableStateFlow<Map<String, Parsed>>(emptyMap())
+    private var parsedDirId: String? = null
+
+    private suspend fun dir(): DocDir = storage.current().waypoints
 
     val collections: StateFlow<List<KmlCollection>> =
         combine(parsed, settings.settings.map { it.activeKml }) { files, active ->
@@ -63,42 +70,53 @@ class KmlRepository(
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     init {
+        // (Re)load whenever the storage location changes, including at startup.
         scope.launch {
-            withContext(Dispatchers.IO) {
-                dir.mkdirs()
-                if (dir.listFiles { f -> f.name.endsWith(".kml") }.isNullOrEmpty()) {
-                    KmlWriter.writeAtomically(KmlWriter.newDocument("My waypoints"), File(dir, Settings.DEFAULT_COLLECTION), indent = true)
+            storage.dirs.filterNotNull().collect { d ->
+                mutex.withLock {
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            if (d.waypoints.list().none { it.name.endsWith(".kml", ignoreCase = true) }) {
+                                d.waypoints.write(Settings.DEFAULT_COLLECTION) { KmlWriter.write(KmlWriter.newDocument("My waypoints"), it, indent = true) }
+                            }
+                        }
+                    }
+                    refreshLocked()
                 }
             }
-            refresh()
         }
     }
 
-    /** Rescan the directory and re-parse changed files. */
+    /** Rescan the folder and re-parse changed files. */
     suspend fun refresh() = mutex.withLock { refreshLocked() }
 
     private suspend fun refreshLocked() = withContext(Dispatchers.IO) {
-        val old = parsed.value
-        val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".kml", ignoreCase = true) }.orEmpty()
+        val dir = dir()
+        val old = if (parsedDirId == dir.id) parsed.value else emptyMap()
+        val files = runCatching { dir.list() }.getOrElse { emptyList() }.filter { it.name.endsWith(".kml", ignoreCase = true) }
         parsed.value = files.associate { f ->
+            val stamp = f.modified to f.size
             val prev = old[f.name]
-            f.name to if (prev != null && prev.modified == f.lastModified()) prev else {
+            f.name to if (prev != null && prev.stamp == stamp) prev else {
                 try {
-                    Parsed(f.lastModified(), f.inputStream().use(KmlParser::parse), null)
+                    Parsed(stamp, dir.read(f.name, KmlParser::parse), null)
                 } catch (e: Exception) {
-                    Parsed(f.lastModified(), null, e.message ?: e.javaClass.simpleName)
+                    Parsed(stamp, null, e.message ?: e.javaClass.simpleName)
                 }
             }
         }
+        parsedDirId = dir.id
     }
 
     /** Create an empty collection; returns its id. */
     suspend fun create(title: String): String = mutex.withLock {
-        val file = uniqueFile(safeName(title))
-        withContext(Dispatchers.IO) { KmlWriter.writeAtomically(KmlWriter.newDocument(title), file, indent = true) }
-        settings.setKmlActive(file.name, true)
+        val dir = dir()
+        val name = withContext(Dispatchers.IO) {
+            uniqueName(dir, safeName(title)).also { n -> dir.write(n) { KmlWriter.write(KmlWriter.newDocument(title), it, indent = true) } }
+        }
+        settings.setKmlActive(name, true)
         refreshLocked()
-        file.name
+        name
     }
 
     /** Import a .kml or .kmz picked by the user. Returns the new collection id. */
@@ -118,19 +136,18 @@ class KmlRepository(
         // Validate before keeping it.
         val doc = withContext(Dispatchers.IO) { kml.inputStream().use(KmlParser::parse) }
         val base = displayName.substringBeforeLast('.').ifBlank { doc.name ?: "Imported" }
-        val file = uniqueFile(safeName(base))
-        withContext(Dispatchers.IO) {
-            val tmp = File(file.path + ".tmp")
-            tmp.writeBytes(kml)
-            check(tmp.renameTo(file)) { "Could not save $file" }
+        val dir = dir()
+        val name = withContext(Dispatchers.IO) {
+            uniqueName(dir, safeName(base)).also { n -> dir.write(n) { it.write(kml) } }
         }
-        settings.setKmlActive(file.name, true)
+        settings.setKmlActive(name, true)
         refreshLocked()
-        file.name
+        name
     }
 
     suspend fun delete(id: String) = mutex.withLock {
-        withContext(Dispatchers.IO) { File(dir, id).delete() }
+        val dir = dir()
+        withContext(Dispatchers.IO) { dir.delete(id) }
         settings.setKmlActive(id, false)
         refreshLocked()
     }
@@ -139,11 +156,11 @@ class KmlRepository(
 
     /** Add a Point placemark to collection [id], editing its file in place. */
     suspend fun addWaypoint(id: String, name: String, lat: Double, lon: Double) = mutex.withLock {
+        val dir = dir()
         withContext(Dispatchers.IO) {
-            val file = File(dir, id)
-            val doc = file.inputStream().use { Xml.builder().parse(it) }
+            val doc = dir.read(id) { Xml.builder().parse(it) }
             KmlWriter.addPlacemark(doc, name, lat, lon)
-            KmlWriter.writeAtomically(doc, file)
+            dir.write(id) { KmlWriter.write(doc, it) }
         }
         refreshLocked()
     }
@@ -151,12 +168,7 @@ class KmlRepository(
     private fun safeName(title: String): String =
         title.trim().replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").take(80).ifBlank { "Collection" }
 
-    private fun uniqueFile(base: String): File {
-        var f = File(dir, "$base.kml")
-        var i = 2
-        while (f.exists()) f = File(dir, "$base ($i).kml").also { i++ }
-        return f
-    }
+    private fun uniqueName(dir: DocDir, base: String) = dir.uniqueName(base, "kml") { " ($it)" }
 
     companion object {
         private const val MAX_IMPORT_BYTES = 50_000_000

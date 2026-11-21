@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.cartogliss.ui.download.DownloadScreen
 import app.cartogliss.ui.screens.CacheScreen
+import app.cartogliss.ui.screens.StorageScreen
 import app.cartogliss.ui.screens.KeysScreen
 import app.cartogliss.ui.screens.MapScreen
 import app.cartogliss.ui.screens.MenuScreen
@@ -43,6 +44,7 @@ object Routes {
     const val SETTINGS_UNITS = "settings/units"
     const val SETTINGS_TRACK = "settings/track"
     const val SETTINGS_CACHE = "settings/cache"
+    const val SETTINGS_STORAGE = "settings/storage"
 }
 
 @Composable
@@ -109,5 +111,6 @@ fun CartoGlissNavHost() {
         composable(Routes.SETTINGS_UNITS) { UnitsScreen(onBack = back) }
         composable(Routes.SETTINGS_TRACK) { TrackSettingsScreen(onBack = back) }
         composable(Routes.SETTINGS_CACHE) { CacheScreen(onBack = back) }
+        composable(Routes.SETTINGS_STORAGE) { StorageScreen(onBack = back) }
     }
 }

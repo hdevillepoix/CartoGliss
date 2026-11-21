@@ -30,14 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cartogliss.appContainer
 import app.cartogliss.geo.Units
 import app.cartogliss.tracks.TrackFile
 import app.cartogliss.tracks.TrackStats
 import app.cartogliss.ui.screens.ScreenScaffold
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -61,7 +62,7 @@ fun TracksScreen(onToMap: () -> Unit, onBack: () -> Unit) {
         Column(Modifier.padding(padding)) {
             recording?.let {
                 Text(
-                    "Recording: ${Units.distance(it.distanceM, s.distanceUnit)}, ${it.points.size} points",
+                    "${if (it.paused) "Paused" else "Recording"}: ${Units.distance(it.distanceM, s.distanceUnit)}, ${it.points.size} points",
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -93,7 +94,7 @@ fun TracksScreen(onToMap: () -> Unit, onBack: () -> Unit) {
                         },
                         trailingContent = {
                             Row {
-                                IconButton(onClick = { share(context, tf) }) { Icon(Icons.Filled.Share, contentDescription = "Share") }
+                                IconButton(onClick = { scope.launch { share(context, tf) } }) { Icon(Icons.Filled.Share, contentDescription = "Share") }
                                 IconButton(onClick = { deleting = tf }) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
                             }
                         },
@@ -131,9 +132,10 @@ fun TracksScreen(onToMap: () -> Unit, onBack: () -> Unit) {
     }
 }
 
-private fun share(context: android.content.Context, tf: TrackFile) {
+private suspend fun share(context: android.content.Context, tf: TrackFile) {
     try {
-        val uri = FileProvider.getUriForFile(context, "app.cartogliss.files", tf.file)
+        val storage = context.appContainer.storage
+        val uri = withContext(Dispatchers.IO) { storage.shareUri(storage.current().tracks, tf.id) } ?: error("file not found")
         val send = Intent(Intent.ACTION_SEND)
             .setType("application/gpx+xml")
             .putExtra(Intent.EXTRA_STREAM, uri)

@@ -8,6 +8,7 @@ import app.cartogliss.location.HeadingTracker
 import app.cartogliss.location.LocationTracker
 import app.cartogliss.settings.KeyProvider
 import app.cartogliss.settings.SettingsRepository
+import app.cartogliss.storage.Storage
 import app.cartogliss.tiles.BuiltInSources
 import app.cartogliss.tiles.SourceCatalog
 import app.cartogliss.tiles.SourceRegistry
@@ -37,7 +38,9 @@ class AppContainer(context: Context) {
     /** Outlives screens; used for work that must finish (saving state, tile loads). */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val settings = SettingsRepository(context.settingsStore)
+    val settings = SettingsRepository(context.settingsStore, BuiltInKeys.map)
+
+    val storage = Storage(context, settings, appScope)
 
     val apiKeys: StateFlow<Map<KeyProvider, String>> = settings.settings
         .map { it.apiKeys }
@@ -51,7 +54,7 @@ class AppContainer(context: Context) {
 
     val tileStore = TileStore(context)
 
-    val kml = KmlRepository(File(context.filesDir, "kml"), settings, appScope)
+    val kml = KmlRepository(storage, settings, appScope)
 
     val location = LocationTracker(context)
     val heading = HeadingTracker(context)
@@ -67,18 +70,36 @@ class AppContainer(context: Context) {
 
     val tileLoader = TileLoader(tileStore, fetcher, appScope)
 
-    val trackFiles = TrackFiles(File(context.filesDir, "tracks"))
+    val trackFiles = TrackFiles(storage, appScope)
 
-    val recorder = TrackRecorder(TrackJournal(context), location, settings, appScope, File(context.filesDir, "tracks")) { file ->
+    val recorder = TrackRecorder(TrackJournal(context), location, settings, storage, appScope) { name ->
         trackFiles.refresh()
-        settings.setTrackShown(file.name, true)
+        settings.setTrackShown(name, true)
+    }
+
+    /** Pick up files added to the shared folders by other apps (called when the app comes to the front). */
+    fun rescanFiles() {
+        appScope.launch {
+            kml.refresh()
+            trackFiles.refresh()
+        }
     }
 
     init {
         // A newly entered key should take effect without waiting for the retry delay.
         appScope.launch { apiKeys.collect { tileLoader.clearFailures() } }
-        appScope.launch { trackFiles.refresh() }
     }
+}
+
+/** API keys built into the APK from keys.env (see app/build.gradle.kts); blank when not set. */
+object BuiltInKeys {
+    val map: Map<KeyProvider, String> = mapOf(
+        KeyProvider.THUNDERFOREST to BuildConfig.KEY_THUNDERFOREST,
+        KeyProvider.MAPBOX to BuildConfig.KEY_MAPBOX,
+        KeyProvider.TRACESTRACK to BuildConfig.KEY_TRACESTRACK,
+        KeyProvider.OS to BuildConfig.KEY_OS,
+        KeyProvider.AZURE to BuildConfig.KEY_AZURE,
+    ).filterValues { it.isNotBlank() }
 }
 
 class CartoGlissApp : Application() {

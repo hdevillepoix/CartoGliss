@@ -204,11 +204,25 @@ fun SatelliteIcon(tint: Color, off: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-/** Record: red disc when recording, outlined circle otherwise. */
+enum class RecordMode { OFF, RECORDING, PAUSED }
+
+/** Record: red disc when recording, red pause bars in a red ring when paused, outlined circle otherwise. */
 @Composable
-fun RecordIcon(recording: Boolean, tint: Color, modifier: Modifier = Modifier) {
+fun RecordIcon(mode: RecordMode, tint: Color, modifier: Modifier = Modifier) {
     Canvas(modifier.size(22.dp)) {
         val r = size.minDimension * 0.4f
-        if (recording) drawCircle(RECORD_RED, r) else drawCircle(tint, r, style = Stroke(2.dp.toPx()))
+        when (mode) {
+            RecordMode.RECORDING -> drawCircle(RECORD_RED, r)
+            RecordMode.OFF -> drawCircle(tint, r, style = Stroke(2.dp.toPx()))
+            RecordMode.PAUSED -> {
+                drawCircle(RECORD_RED, r, style = Stroke(2.dp.toPx()))
+                val bw = r * 0.28f
+                val bh = r * 0.9f
+                val cx = size.width / 2
+                val cy = size.height / 2
+                drawRect(RECORD_RED, Offset(cx - bw * 1.6f, cy - bh / 2), androidx.compose.ui.geometry.Size(bw, bh))
+                drawRect(RECORD_RED, Offset(cx + bw * 0.6f, cy - bh / 2), androidx.compose.ui.geometry.Size(bw, bh))
+            }
+        }
     }
 }

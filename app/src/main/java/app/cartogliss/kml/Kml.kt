@@ -4,7 +4,6 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import java.io.ByteArrayInputStream
-import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.ZipInputStream
@@ -179,16 +178,6 @@ object KmlWriter {
         t.setOutputProperty(OutputKeys.ENCODING, "UTF-8")
         t.setOutputProperty(OutputKeys.INDENT, if (indent) "yes" else "no")
         t.transform(DOMSource(doc), StreamResult(out))
-    }
-
-    /** Write via a temp file and rename, so a crash never leaves a half-written collection. */
-    fun writeAtomically(doc: Document, file: File, indent: Boolean = false) {
-        val tmp = File(file.path + ".tmp")
-        tmp.outputStream().use { write(doc, it, indent) }
-        if (!tmp.renameTo(file)) {
-            file.delete()
-            check(tmp.renameTo(file)) { "Could not replace $file" }
-        }
     }
 }
 

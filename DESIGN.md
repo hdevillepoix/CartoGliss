@@ -93,10 +93,16 @@ Turns red when recording a track, and displays how far and how long the recorded
 > **Correction (M6):** background location permission is *not* needed. A location foreground service started while the app is visible keeps "while in use" access, so the app never asks for "Allow all the time".
 >
 > **Implementation (M6):**
-> - Points are journaled to SQLite as they arrive, filtered by the three Track recording settings. Only live fixes count; the last stale fix isn't recorded.
-> - The notification shows distance and duration, and has a "Stop and save" action. On Android 13+ the notification permission is asked the first time you record; recording works without it.
-> - Stopping (state bar → confirm, or the notification) writes `files/tracks/yyyy-MM-dd_HH-mm.gpx` (GPX 1.1, named "Track yyyy-MM-dd HH:mm") and switches it on for the map.
+> - Points are filtered by the three Track recording settings. Only live fixes count; the last stale fix isn't recorded.
+> - The notification shows distance and duration, and has "Pause" and "Finish and save" actions. On Android 13+ the notification permission is asked the first time you record; recording works without it.
+> - Finishing writes `tracks/yyyy-MM-dd_HH-mm.gpx` in the storage folder (see Storage; GPX 1.1, named "Track yyyy-MM-dd HH:mm") and switches it on for the map. If the file can't be written, the track stays open so nothing is lost.
 > - If Android kills the app mid-recording, the service restarts and continues the same track in a new `<trkseg>`. Opening the map also resumes an interrupted recording.
+>
+> **Change (2026-11-21): buffered writes.** Points are no longer written one by one. They are kept in memory and written to the SQLite journal in one transaction per batch: when N points are waiting (Settings → Track recording, default 10; 1 = every point), when the oldest has waited 2 minutes, and on pause, finish and service stop. If Android kills the process, at most the unwritten batch is lost.
+>
+> **Change (2026-11-21): pause.** Tapping the record button while recording asks: **Pause**, **Finish and save**, or Keep recording.
+> - Paused: GPS is released (no notification), the track stays open in the journal and survives app restarts. The button shows red pause bars and "paused"; the live track stays on the map.
+> - Tapping it while paused asks: **Continue this track** (in a new `<trkseg>`), **Finish it and start a new track**, **Finish it**, or Cancel.
 > - The GPS on/off toggle also pauses recording (no fixes arrive).
 > - On the map, the live track is red and saved tracks are blue, 3 dp.
 #### Icon to access the menu
@@ -156,7 +162,7 @@ List of source KMLs, with possibility to activate/deactivate them (star). Possib
 
 > **Decisions (KML):**
 > - Supported: Placemark Points, LineStrings and Polygons, with basic Style/StyleMap (line colour, width, fill colour). Folders are flattened. KMZ can be imported.
-> - **The KML files in app storage are the source of truth.** Importing copies the file in. Adding a waypoint inserts a Placemark through a DOM edit that keeps the rest of the file unchanged.
+> - **The KML files in the storage folder are the source of truth.** Importing copies the file in. Adding a waypoint inserts a Placemark through a DOM edit that keeps the rest of the file unchanged.
 > - A default collection, `My waypoints.kml`, is created on first run.
 #### Add manually
 Screen to manually add a waypoint (lat/lon/name).
@@ -165,10 +171,11 @@ The space bar in those field should convert to the appropriate next separator (d
 It should let the user select which KML the waypoint should be saved in.
 
 > **Decision:** one parser accepts DD, DDM and DMS, with either N/S/E/W letters or a sign. Pressing space moves to the next separator (`°` → `'` → `"`).
-> Only the last component may have decimals, and minutes and seconds must be under 60. A space typed right after a digit becomes the next unused separator; anywhere else it stays a space. A preview line shows the parsed value in your angle format. Coordinates are shown with ASCII `'` and `"`, hemisphere letter first (e.g. `N 45°07.408'`).
+> Only the last component may have decimals, and minutes and seconds must be under 60. A space typed right after a digit becomes the next unused separator; anywhere else it stays a space. A preview line shows the parsed value in your angle format.
+> **Change (2026-11-21):** coordinates are shown as **signed decimal degrees by default** (`45.12346, -6.12345`, 5 decimals). Settings → Units → Angle format can override this with decimal degrees with N/S/E/W, DDM or DMS; those use ASCII `'` and `"`, hemisphere letter first (e.g. `N 45°07.408'`).
 
 > **Implementation (M5):**
-> - Collections are `.kml` files in app storage (`files/kml/`). Importing copies the file in; a KMZ is unpacked to its `doc.kml` (or its first `.kml`). Importing accepts any file type, because many file managers label KML as octet-stream, and the file must parse before it's kept.
+> - Collections are `.kml` files in the `waypoints/` folder (see Storage). Files dropped into the folder by other apps appear when the app comes back to the front. Importing copies the file in; a KMZ is unpacked to its `doc.kml` (or its first `.kml`). Importing accepts any file type, because many file managers label KML as octet-stream, and the file must parse before it's kept.
 > - Imported files are capped at 50 MB, and DTDs/external entities are refused.
 > - Active collections are remembered in settings; new and imported collections start active.
 > - Collections can also be created empty ("New") and deleted (with confirmation).
@@ -195,17 +202,32 @@ Sources:
 - Ordnance Survey (OS Maps API)
 - Azure Maps (Microsoft satellite, official)
 
+> **Built-in keys (2026-11-21):** keys can optionally be built into the APK. Put them in `keys.env` at the repo root (gitignored; template in `keys.env.example`, lines like `MAPBOX_KEY=…`), or set environment variables with the same names. Gradle turns them into `BuildConfig.KEY_*` fields. A key typed here overrides the built-in one, and clearing the field goes back to it. Built-in keys can be extracted from the APK, so don't share an APK that carries them.
+
 #### Units
 distance: m/km, miles, nautical miles
 speed: km/h, mph, kt, m/s
-angle format: decimal degrees, degrees+decimal minutes, degrees+minutes+decimal seconds.
+angle format: signed decimal degrees (default), decimal degrees with N/S/E/W, degrees+decimal minutes, degrees+minutes+decimal seconds.
 
 #### Track recording
 - Minimum time interval between points (seconds).
 - Minimum distance between points (metres).
 - Accuracy filter: drop fixes worse than N metres.
+- Points kept in memory before writing to storage (default 10).
 
 (No auto-pause.)
+
+#### Storage folder
+Where GPX tracks and KML waypoints are kept.
+
+> **Decision (2026-11-21):** tracks and waypoints can live in a shared folder that other apps can open and that survives uninstalling the app.
+> - The user picks a folder once with the system folder picker (Storage Access Framework, e.g. a new `CartoGliss` folder). The app keeps a persistent permission on it, and creates `tracks/` (GPX) and `waypoints/` (KML) inside. No "All files access" permission is needed.
+> - On first launch a dialog asks for the folder; "App storage" keeps the files private. This can be changed later in Settings → Storage folder.
+> - Choosing a folder moves the files from app storage into it. A file with the same name that is already there is kept: an identical copy, or an empty collection like the first-run "My waypoints", is dropped; anything else is moved in under a new name, e.g. `name (2).kml`.
+> - After a reinstall the first-launch dialog asks again; picking the same folder brings the files back. If settings were restored from a backup but the folder permission is gone, the map says access was lost and asks again (meanwhile app storage is used).
+> - "Use app storage instead" leaves the files in the folder.
+> - The tile cache, settings and the recording journal stay in app storage.
+> - Replacing a file writes `name.tmp`, deletes the old file and renames the temp file, or copies it if the provider can't rename.
 
 #### Tile cache
 Per-source cache size, plus a "clear cache" button for each source.
@@ -335,7 +357,10 @@ Does it make sense to use MapLibre Native?
 | Tile cache | Kept forever: no automatic removal, no automatic refresh. Cache first, network only on a miss. Manual clear per source. |
 | KML | Points + lines + polygons with basic styles. KMZ import. The files are the source of truth. |
 | Target | From Pin "Go To" or a waypoint tap. Persists. Long-press clears it. |
-| Tracks | Foreground service. Settings: time interval, distance, accuracy filter. Saved as GPX. |
+| Tracks | Foreground service. Settings: time interval, distance, accuracy filter, write batch size. Pause / continue (new segment) / finish. Saved as GPX. |
+| Storage | GPX and KML in a user-picked shared folder (SAF): `tracks/`, `waypoints/`. App storage until one is picked. |
+| Coordinates | Signed decimal degrees by default. |
+| Built-in keys | Optional, from the gitignored `keys.env` into BuildConfig. Keys typed in Settings override them. |
 | Location | `LocationManager` GPS + `GnssStatus`. Heading from the rotation vector sensor, true north. |
 
 
@@ -345,7 +370,8 @@ Single Gradle `:app` module to start, organised by package:
 - `map.render`: viewport state (zoom N, overzoom M, centre in world pixel coordinates), tile math, and Canvas drawing. It has an overlay layer API used by the GPS point, cone, arrow, target line, KML features and labels, tracks, crosshair and scale bar.
 - `tiles`: source model and catalog loader. `TileRepository` looks up a tile in memory (LRU bitmap cache), then on disk, then on the network (OkHttp). Disk storage is one SQLite file per source, with an MBTiles-like schema `tiles(z, x, y, data BLOB, fetched_at)`. Bulk download uses a WorkManager worker.
 - `location`: GPS fixes, GNSS status and heading sensors, exposed as `StateFlow`s.
-- `tracks`: recording foreground service. While recording, points go to a SQLite journal so a crash loses nothing; when recording stops, the track is exported to GPX. Saved tracks are GPX files in app storage, and Browse can show or hide each one on the map.
+- `tracks`: recording foreground service. While recording, points are buffered and written in batches to a SQLite journal; finishing exports the track to GPX. Saved tracks are GPX files in the storage folder, and Browse can show or hide each one on the map.
+- `storage`: `DocDir`, a flat folder of files, either app storage (`FileDocDir`) or a sub-folder of the picked SAF tree (`SafDocDir`). `Storage` resolves the current location, and handles migration and sharing URIs.
 - `kml`: parser (XmlPullParser), DOM-based writer for adding waypoints, and a collections registry with active flags.
 - `astro`: sun, moon and UV calculations.
 - `geo`: distance/bearing (great circle), coordinate formatting and parsing, unit conversion.
@@ -354,7 +380,7 @@ Single Gradle `:app` module to start, organised by package:
 
 
 # Roadmap
-Status (2026-11-21): milestones 0–8 implemented and unit-tested; on-device testing pending.
+Status (2026-11-21): milestones 0–8 implemented and unit-tested; on-device testing pending. After M8: buffered track writes, pause/continue, signed-DD default, shared storage folder, built-in keys.
 
 0. Project skeleton: Gradle, Compose navigation, settings store.
 1. Renderer with a single source (OSM Standard): discrete zoom, pan, pinch snap, overzoom toggle, disk cache, placeholder tiles.
@@ -375,7 +401,7 @@ Status (2026-11-21): milestones 0–8 implemented and unit-tested; on-device tes
 
 
 # Testing
-Current suite (70 JVM tests): settings round-trip; tile maths and quadkeys; viewport stepping/panning/visible tiles; URL templates; catalog validity, coverage and registry persistence; distance/bearing/compass; unit and coordinate formatting; coordinate parsing and the space-bar rule; UV formula, threshold crossing and real sun data (Geneva/London); KML parse/styles/KMZ/in-place edit (no whitespace growth); GPX write/parse, segments and the track filter; area-selection maths (splits, dedup, exact counts).
+Current suite (80 JVM tests): settings round-trip, built-in keys and the storage folder; tile maths and quadkeys; viewport stepping/panning/visible tiles; URL templates; catalog validity, coverage and registry persistence; distance/bearing/compass; unit and coordinate formatting; coordinate parsing and the space-bar rule; UV formula, threshold crossing and real sun data (Geneva/London); KML parse/styles/KMZ/in-place edit (no whitespace growth); GPX write/parse, segments and the track filter; area-selection maths (splits, dedup, exact counts); point buffer; file folder writes (a failed write keeps the old file), unique names and migration clashes. The SAF folder needs a device.
 
 - JVM unit tests for the pure logic: tile math and quadkeys, coordinate parser and formatter, distance/bearing, UV and astro, KML parsing and round-trip (add a waypoint, rest of the file unchanged), download tile counting, scale-bar rounding.
 - On-device checks: zoom and overzoom behaviour, missing-tile placeholder (no fallback from other levels), no fling when panning, cone hidden when the phone is tilted, background recording with the screen off.

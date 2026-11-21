@@ -17,4 +17,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        // Tracks and waypoints may live in a shared folder that other apps change.
+        appContainer.rescanFiles()
+    }
 }

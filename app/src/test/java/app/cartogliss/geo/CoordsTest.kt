@@ -52,4 +52,15 @@ class CoordsTest {
         assertEquals("19.4 kt", Units.speed(10.0, SpeedUnit.KNOTS))
         assertEquals("3281 ft", Units.altitude(1000.0, DistanceUnit.MILES))
     }
+
+    @Test
+    fun signedDecimalIsTheDefault() {
+        assertEquals(AngleFormat.SIGNED, app.cartogliss.settings.Settings().angleFormat)
+        assertEquals("45.12346", Coords.formatLat(45.123456, AngleFormat.SIGNED))
+        assertEquals("-6.50000", Coords.formatLon(-6.5, AngleFormat.SIGNED))
+        assertEquals("45.12346, -6.50000", Coords.format(45.123456, -6.5, AngleFormat.SIGNED))
+        assertEquals("0.00000", Coords.formatLat(-0.000001, AngleFormat.SIGNED))
+        // What is displayed can be typed back.
+        assertEquals(-6.5, CoordInput.parse(Coords.formatLon(-6.5, AngleFormat.SIGNED), isLat = false)!!, 1e-9)
+    }
 }

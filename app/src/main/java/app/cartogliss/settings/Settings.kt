@@ -14,7 +14,9 @@ enum class SpeedUnit(val label: String) {
 }
 
 enum class AngleFormat(val label: String) {
-    DD("Decimal degrees"),
+    /** Default: 45.12346, -6.12345 */
+    SIGNED("Signed decimal degrees (45.12346, -6.12345)"),
+    DD("Decimal degrees with N/S/E/W"),
     DDM("Degrees + decimal minutes"),
     DMS("Degrees + minutes + decimal seconds"),
 }
@@ -35,6 +37,8 @@ data class TrackSettings(
     val minDistanceM: Int = 5,
     /** Fixes with a worse accuracy than this (metres) are dropped. */
     val maxAccuracyM: Int = 30,
+    /** Points kept in memory before they are written to storage (1 = write every point). */
+    val bufferPoints: Int = 10,
 )
 
 data class Target(
@@ -61,8 +65,11 @@ data class Viewport(
 data class Settings(
     val distanceUnit: DistanceUnit = DistanceUnit.METRIC,
     val speedUnit: SpeedUnit = SpeedUnit.KMH,
-    val angleFormat: AngleFormat = AngleFormat.DD,
+    val angleFormat: AngleFormat = AngleFormat.SIGNED,
+    /** Keys in use: typed in Settings, else built into the APK (keys.env). */
     val apiKeys: Map<KeyProvider, String> = emptyMap(),
+    /** Keys typed in Settings only. */
+    val userKeys: Map<KeyProvider, String> = emptyMap(),
     val starredSources: Set<String> = DEFAULT_STARRED,
     val track: TrackSettings = TrackSettings(),
     val target: Target? = null,
@@ -72,6 +79,10 @@ data class Settings(
     val activeKml: Set<String> = DEFAULT_ACTIVE_KML,
     /** File names of saved GPX tracks drawn on the map. */
     val shownTracks: Set<String> = emptySet(),
+    /** Shared folder (SAF tree URI) holding tracks/ and waypoints/; null = app storage. */
+    val storageTree: String? = null,
+    /** The first-launch "choose a folder" question was answered. */
+    val storagePrompted: Boolean = false,
 ) {
     companion object {
         val DEFAULT_STARRED = setOf("osm-standard", "opentopomap")

@@ -3,6 +3,7 @@ package app.cartogliss.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -12,7 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Typed access to the app's persisted settings (DataStore Preferences). */
-class SettingsRepository(private val store: DataStore<Preferences>) {
+class SettingsRepository(
+    private val store: DataStore<Preferences>,
+    /** Keys built into the APK; a key typed in Settings takes precedence. */
+    private val builtInKeys: Map<KeyProvider, String> = emptyMap(),
+) {
 
     val settings: Flow<Settings> = store.data.map(::read)
 
@@ -34,7 +39,15 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         it[K.trackInterval] = track.minIntervalS
         it[K.trackDistance] = track.minDistanceM
         it[K.trackAccuracy] = track.maxAccuracyM
+        it[K.trackBuffer] = track.bufferPoints
     }
+
+    suspend fun setStorageTree(uri: String?) = store.edit {
+        if (uri == null) it.remove(K.storageTree) else it[K.storageTree] = uri
+        it[K.storagePrompted] = true
+    }
+
+    suspend fun setStoragePrompted() = store.edit { it[K.storagePrompted] = true }
 
     suspend fun setTarget(target: Target?) = store.edit {
         if (target == null) {
@@ -85,12 +98,16 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
             distanceUnit = enumOr(p[K.distanceUnit], d.distanceUnit),
             speedUnit = enumOr(p[K.speedUnit], d.speedUnit),
             angleFormat = enumOr(p[K.angleFormat], d.angleFormat),
-            apiKeys = KeyProvider.entries.mapNotNull { kp -> p[K.apiKey(kp)]?.let { kp to it } }.toMap(),
+            apiKeys = KeyProvider.entries.mapNotNull { kp ->
+                (p[K.apiKey(kp)] ?: builtInKeys[kp]?.takeIf { it.isNotBlank() })?.let { kp to it }
+            }.toMap(),
+            userKeys = KeyProvider.entries.mapNotNull { kp -> p[K.apiKey(kp)]?.let { kp to it } }.toMap(),
             starredSources = p[K.starred] ?: d.starredSources,
             track = TrackSettings(
                 minIntervalS = p[K.trackInterval] ?: d.track.minIntervalS,
                 minDistanceM = p[K.trackDistance] ?: d.track.minDistanceM,
                 maxAccuracyM = p[K.trackAccuracy] ?: d.track.maxAccuracyM,
+                bufferPoints = p[K.trackBuffer] ?: d.track.bufferPoints,
             ),
             target = if (lat != null && lon != null) Target(lat, lon, p[K.targetName]) else null,
             viewport = Viewport(
@@ -102,6 +119,8 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
             ),
             activeKml = p[K.activeKml] ?: d.activeKml,
             shownTracks = p[K.shownTracks] ?: d.shownTracks,
+            storageTree = p[K.storageTree],
+            storagePrompted = p[K.storagePrompted] ?: false,
         )
     }
 
@@ -127,5 +146,8 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val vpSource = stringPreferencesKey("viewport.source")
         val activeKml = stringSetPreferencesKey("kml.active")
         val shownTracks = stringSetPreferencesKey("tracks.shown")
+        val trackBuffer = intPreferencesKey("track.bufferPoints")
+        val storageTree = stringPreferencesKey("storage.tree")
+        val storagePrompted = booleanPreferencesKey("storage.prompted")
     }
 }

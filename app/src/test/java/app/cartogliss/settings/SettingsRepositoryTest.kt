@@ -19,9 +19,34 @@ class SettingsRepositoryTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private fun repo(scope: CoroutineScope): SettingsRepository {
+    private fun repo(scope: CoroutineScope, builtIn: Map<KeyProvider, String> = emptyMap()): SettingsRepository {
         val file = tmp.newFile("settings.preferences_pb").also { it.delete() }
-        return SettingsRepository(PreferenceDataStoreFactory.create(scope = scope) { file })
+        return SettingsRepository(PreferenceDataStoreFactory.create(scope = scope) { file }, builtIn)
+    }
+
+    @Test
+    fun builtInKeys_usedUntilOverridden() = runTest(UnconfinedTestDispatcher()) {
+        val r = repo(backgroundScope, mapOf(KeyProvider.MAPBOX to "built-in"))
+        var s = r.settings.first()
+        assertEquals("built-in", s.apiKeys[KeyProvider.MAPBOX])
+        assertTrue(s.userKeys.isEmpty())
+        r.setApiKey(KeyProvider.MAPBOX, "mine")
+        s = r.settings.first()
+        assertEquals("mine", s.apiKeys[KeyProvider.MAPBOX])
+        r.setApiKey(KeyProvider.MAPBOX, "")
+        assertEquals("built-in", r.settings.first().apiKeys[KeyProvider.MAPBOX])
+    }
+
+    @Test
+    fun storageFolder_roundTrip() = runTest(UnconfinedTestDispatcher()) {
+        val r = repo(backgroundScope)
+        assertEquals(false, r.settings.first().storagePrompted)
+        r.setStorageTree("content://tree/x")
+        val s = r.settings.first()
+        assertEquals("content://tree/x", s.storageTree)
+        assertTrue(s.storagePrompted)
+        r.setStorageTree(null)
+        assertNull(r.settings.first().storageTree)
     }
 
     @Test

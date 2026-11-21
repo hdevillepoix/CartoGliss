@@ -41,8 +41,8 @@ data class StateBarState(
     val gpsOn: Boolean,
     val satsUsed: Int,
     val satsVisible: Int,
-    val recording: Boolean,
-    /** "1.2 km · 0:42" while recording. */
+    val record: RecordMode,
+    /** "1.2 km · 0:42" while recording, "paused" when paused. */
     val recordSummary: String?,
     val recordAvailable: Boolean,
 )
@@ -78,10 +78,15 @@ fun StateBar(s: StateBarState, a: StateBarActions, modifier: Modifier = Modifier
                     Text(if (s.gpsOn) "${s.satsUsed}/${s.satsVisible}" else "off", fontSize = 10.sp, lineHeight = 11.sp)
                 }
             }
-            BarCell(onClick = a.onRecord, label = if (s.recording) "Stop recording" else "Record track", enabled = s.recordAvailable) {
+            val recordLabel = when (s.record) {
+                RecordMode.OFF -> "Record track"
+                RecordMode.RECORDING -> "Pause or finish recording"
+                RecordMode.PAUSED -> "Continue or finish track"
+            }
+            BarCell(onClick = a.onRecord, label = recordLabel, enabled = s.recordAvailable) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    RecordIcon(s.recording, if (s.recordAvailable) tint else tint.copy(alpha = 0.38f))
-                    if (s.recording && s.recordSummary != null) {
+                    RecordIcon(s.record, if (s.recordAvailable) tint else tint.copy(alpha = 0.38f))
+                    if (s.record != RecordMode.OFF && s.recordSummary != null) {
                         Text(s.recordSummary, fontSize = 10.sp, lineHeight = 11.sp, color = RECORD_RED, maxLines = 1)
                     }
                 }

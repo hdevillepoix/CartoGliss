@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.material3.AlertDialog
+import app.cartogliss.ui.map.RecordMode
 import androidx.compose.material3.TextButton
 import androidx.core.content.ContextCompat
 import app.cartogliss.tracks.TrackStats
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -130,14 +132,12 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
     val liveLines = remember(recording?.points) {
         recording?.points?.groupBy { it.seg }?.values?.toList()?.let { TrackLines.fromSegments(it, live = true) }.orEmpty()
     }
-    var confirmStop by remember { mutableStateOf(false) }
+    var recordDialog by remember { mutableStateOf(false) }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         container.recorder.start(context)
     }
-    // An interrupted recording (app killed while recording) is resumed when the map opens.
-    LaunchedEffect(Unit) {
-        if (container.recorder.state.value == null && container.recorder.hasOpenTrack()) container.recorder.resume(context)
-    }
+    // An open track is loaded when the map opens: a paused one stays paused, an interrupted one resumes.
+    LaunchedEffect(Unit) { container.recorder.restore(context) }
     val tapRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
     // A different source may have a narrower zoom range.
     LaunchedEffect(source.minZoom, source.maxZoom) { vp = vp.clampZoom(source.minZoom, source.maxZoom) }
@@ -194,8 +194,14 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
         gpsOn = gpsOn,
         satsUsed = gnss.used,
         satsVisible = gnss.visible,
-        recording = recording != null,
-        recordSummary = recording?.let { "${Units.distance(it.distanceM, live.distanceUnit)} · ${TrackStats.duration(System.currentTimeMillis() - it.startedAtMs)}" },
+        record = when {
+            recording == null -> RecordMode.OFF
+            recording!!.paused -> RecordMode.PAUSED
+            else -> RecordMode.RECORDING
+        },
+        recordSummary = recording?.let {
+            if (it.paused) "paused" else "${Units.distance(it.distanceM, live.distanceUnit)} · ${TrackStats.duration(System.currentTimeMillis() - it.startedAtMs)}"
+        },
         recordAvailable = true,
     )
     val barActions = StateBarActions(
@@ -209,7 +215,7 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
         onToggleGps = { container.location.setEnabled(!gpsOn) },
         onRecord = {
             when {
-                recording != null -> confirmStop = true
+                recording != null -> recordDialog = true
                 !container.location.hasPermission() ->
                     Toast.makeText(context, "Location permission is needed to record", Toast.LENGTH_LONG).show()
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -293,22 +299,55 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
         StateBar(barState, barActions)
     }
 
-    if (confirmStop) {
-        AlertDialog(
-            onDismissRequest = { confirmStop = false },
-            title = { Text("Stop recording?") },
-            text = { Text("The track is saved as a GPX file (Menu → Tracks).") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmStop = false
-                    scope.launch {
-                        val file = container.recorder.stop(context)
-                        Toast.makeText(context, file?.let { "Saved ${it.name}" } ?: "Nothing recorded", Toast.LENGTH_SHORT).show()
-                    }
-                }) { Text("Stop and save") }
-            },
-            dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Keep recording") } },
-        )
+    if (recordDialog) {
+        val r = recording
+        val close = { recordDialog = false }
+        fun saved(name: String?) =
+            Toast.makeText(context, name?.let { "Saved $it" } ?: "Nothing recorded", Toast.LENGTH_SHORT).show()
+        fun failed(e: Exception) =
+            Toast.makeText(context, "Could not save the track (it is kept): ${e.message}", Toast.LENGTH_LONG).show()
+        when {
+            r == null -> close()
+            !r.paused -> ChoiceDialog(
+                title = "Recording",
+                message = "${Units.distance(r.distanceM, live.distanceUnit)}, ${r.points.size} points.",
+                choices = listOf(
+                    "Pause" to { scope.launch { container.recorder.pause(context) } },
+                    "Finish and save" to {
+                        scope.launch {
+                            try { saved(container.recorder.finish(context)) } catch (e: Exception) { failed(e) }
+                        }
+                    },
+                ),
+                cancel = "Keep recording",
+                onDismiss = close,
+            )
+            else -> ChoiceDialog(
+                title = "Track paused",
+                message = "${Units.distance(r.distanceM, live.distanceUnit)}, ${r.points.size} points.",
+                choices = listOf(
+                    "Continue this track" to { scope.launch { container.recorder.continueTrack(context) } },
+                    "Finish it and start a new track" to {
+                        scope.launch {
+                            try { saved(container.recorder.finishAndStartNew(context)) } catch (e: Exception) { failed(e) }
+                        }
+                    },
+                    "Finish it" to {
+                        scope.launch {
+                            try { saved(container.recorder.finish(context)) } catch (e: Exception) { failed(e) }
+                        }
+                    },
+                ),
+                cancel = "Cancel",
+                onDismiss = close,
+            )
+        }
+    }
+
+    val storageDirs by container.storage.dirs.collectAsStateWithLifecycle()
+    when {
+        storageDirs?.lost == true -> StoragePromptDialog(lost = true)
+        !live.storagePrompted && live.storageTree == null -> StoragePromptDialog()
     }
 
     tappedWaypoint?.let { wp ->
@@ -343,4 +382,23 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
             onDismiss = { showPin = false },
         )
     }
+}
+
+/** A dialog with a list of full-width choices (more than AlertDialog's two buttons). */
+@Composable
+private fun ChoiceDialog(title: String, message: String, choices: List<Pair<String, () -> Unit>>, cancel: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                Text(message, modifier = Modifier.padding(bottom = 8.dp))
+                choices.forEach { (label, action) ->
+                    TextButton(onClick = { onDismiss(); action() }, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancel) } },
+    )
 }
