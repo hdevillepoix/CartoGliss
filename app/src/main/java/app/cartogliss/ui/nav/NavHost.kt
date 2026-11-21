@@ -50,8 +50,10 @@ object Routes {
 @Composable
 fun CartoGlissNavHost() {
     val nav = rememberNavController()
-    val back: () -> Unit = { nav.popBackStack() }
-    val go: (String) -> Unit = { nav.navigate(it) }
+    // Never pop the last screen: a double tap (or a save callback racing a back press) would otherwise
+    // leave the NavHost empty, i.e. a blank window that only killing the app fixes.
+    val back: () -> Unit = { if (nav.previousBackStackEntry != null) nav.popBackStack() }
+    val go: (String) -> Unit = { nav.navigate(it) { launchSingleTop = true } }
     val toMap: () -> Unit = { nav.popBackStack(Routes.MAP, inclusive = false) }
 
     NavHost(navController = nav, startDestination = Routes.MAP) {
@@ -86,7 +88,7 @@ fun CartoGlissNavHost() {
             SourceEditScreen(
                 id = e.arguments?.getString("id"),
                 duplicate = e.arguments?.getBoolean("dup") ?: false,
-                onSaved = { id -> nav.popBackStack(); go(Routes.sourceDetail(id)) },
+                onSaved = { id -> back(); go(Routes.sourceDetail(id)) },
                 onBack = back,
             )
         }

@@ -248,6 +248,8 @@ fun AddWaypointScreen(initialLat: Double?, initialLon: Double?, onBack: () -> Un
     var lon by remember { mutableStateOf(TextFieldValue(initialLon?.let { Coords.formatLon(it, s.angleFormat) } ?: "")) }
     var collectionId by remember { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
+    // Saving can take a moment in a shared folder: ignore further taps meanwhile (no duplicate waypoint).
+    var saving by remember { mutableStateOf(false) }
     val chosen = collections.firstOrNull { it.id == collectionId }
         ?: collections.firstOrNull { it.id == Settings.DEFAULT_COLLECTION }
         ?: collections.firstOrNull()
@@ -285,22 +287,30 @@ fun AddWaypointScreen(initialLat: Double?, initialLon: Double?, onBack: () -> Un
                 }
             }
             Button(
-                enabled = name.isNotBlank() && latValue != null && lonValue != null && chosen != null,
+                enabled = !saving && name.isNotBlank() && latValue != null && lonValue != null && chosen != null,
                 onClick = {
                     val target = chosen ?: return@Button
-                    scope.launch {
-                        try {
+                    if (saving) return@Button
+                    saving = true
+                    // App scope: the write finishes even if the screen goes away meanwhile.
+                    container.appScope.launch {
+                        val result = runCatching {
                             container.kml.addWaypoint(target.id, name.trim(), latValue!!, lonValue!!)
                             if (!target.active) container.kml.setActive(target.id, true)
-                            Toast.makeText(context, "Saved in ${target.title}", Toast.LENGTH_SHORT).show()
-                            onBack()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Could not save: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                        scope.launch {
+                            result.onSuccess {
+                                Toast.makeText(context, "Saved in ${target.title}", Toast.LENGTH_SHORT).show()
+                                onBack()
+                            }.onFailure { e ->
+                                saving = false
+                                Toast.makeText(context, "Could not save: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save") }
+            ) { Text(if (saving) "Saving…" else "Save") }
         }
     }
 }

@@ -194,6 +194,7 @@ It should let the user select which KML the waypoint should be saved in.
 > - The waypoint dialog, on the map and in Browse, also has Delete. Every delete asks for confirmation.
 > - Deleting removes the whole `<Placemark>` (all of its MultiGeometry parts) from the KML file, in place through the DOM, like adding a waypoint. The rest of the file is kept, and adding then deleting a placemark leaves the file byte-identical.
 > - A placemark is identified by its position among the file's Placemarks plus its name. If the file changed meanwhile (for example edited by another app in the shared folder) and the name at that position no longer matches, nothing is deleted and a message says so.
+> - **Fix (2026-11-21):** Save is disabled while the waypoint is being written ("Saving…"), and the write runs in the app scope. Navigation never pops the last screen and doesn't push the same screen twice. Before, a second tap on Save, or back racing the save, could pop the map too and leave a blank white window. In dark mode the window behind the UI is now dark as well.
 > - Browse: search by name. Sorted by distance when there is a fix, by name otherwise. Each waypoint offers "Go To" or "Show on map".
 
 ### Tracks
