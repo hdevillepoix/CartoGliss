@@ -2,6 +2,7 @@ package app.cartogliss.kml
 
 import org.w3c.dom.Document
 import org.w3c.dom.Element
+import org.w3c.dom.Text
 import org.w3c.dom.Node
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -37,6 +38,8 @@ data class Placemark(
     val description: String?,
     val geometries: List<KmlGeometry>,
     val style: KmlStyle,
+    /** Position among all Placemark elements of the file (document order), for editing. */
+    val index: Int = -1,
 )
 
 data class KmlDocument(val name: String?, val placemarks: List<Placemark>) {
@@ -67,13 +70,14 @@ object KmlParser {
             val id = url?.substringAfter('#', url)?.takeIf { it.isNotEmpty() } ?: return null
             return styles[id] ?: styleMaps[id]?.let { styles[it] }
         }
-        val placemarks = root.descendants().filter { it.local == "Placemark" }.map { pm ->
+        val placemarks = root.descendants().filter { it.local == "Placemark" }.mapIndexed { i, pm ->
             val inline = pm.child("Style")?.let(::parseStyle)
             Placemark(
                 name = pm.child("name")?.text()?.trim()?.takeIf { it.isNotEmpty() },
                 description = pm.child("description")?.text()?.trim()?.takeIf { it.isNotEmpty() },
                 geometries = geometries(pm),
                 style = inline ?: resolve(pm.child("styleUrl")?.text()?.trim()) ?: KmlStyle(),
+                index = i,
             )
         }.filter { it.geometries.isNotEmpty() }.toList()
         val docName = root.descendants().firstOrNull { it.local == "Document" }?.child("name")?.text()?.trim()
@@ -165,9 +169,28 @@ object KmlWriter {
         val point = el("Point")
         point.appendChild(el("coordinates").apply { textContent = "${fmt(lon)},${fmt(lat)}" })
         pm.appendChild(point)
-        container.appendChild(doc.createTextNode("\n"))
+        // No leading newline when the container already ends with whitespace (e.g. left by a delete).
+        val last = container.lastChild
+        if (!(last is Text && last.data.isBlank())) container.appendChild(doc.createTextNode("\n"))
         container.appendChild(pm)
         container.appendChild(doc.createTextNode("\n"))
+    }
+
+    /**
+     * Removes the [index]-th Placemark (document order) if its name is still [expectedName], so a file
+     * changed meanwhile by another app is never edited at the wrong place. Returns false otherwise.
+     */
+    fun removePlacemark(doc: Document, index: Int, expectedName: String?): Boolean {
+        val pm = doc.documentElement.descendants().filter { it.local == "Placemark" }.elementAtOrNull(index) ?: return false
+        val name = pm.child("name")?.text()?.trim()?.takeIf { it.isNotEmpty() }
+        if (name != expectedName) return false
+        val parent = pm.parentNode
+        val prev = pm.previousSibling
+        val next = pm.nextSibling
+        // Drop the whitespace after it too when there is some before, so add + delete leaves the file as it was.
+        if (prev is Text && prev.data.isBlank() && next is Text && next.data.isBlank()) parent.removeChild(next)
+        parent.removeChild(pm)
+        return true
     }
 
     private fun fmt(v: Double) = String.format(java.util.Locale.ROOT, "%.7f", v).trimEnd('0').trimEnd('.')

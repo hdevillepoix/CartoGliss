@@ -19,9 +19,16 @@ import app.cartogliss.kml.Waypoint
 import app.cartogliss.location.Fix
 import app.cartogliss.settings.AngleFormat
 import app.cartogliss.settings.DistanceUnit
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import app.cartogliss.appContainer
+import app.cartogliss.kml.PlacemarkRef
+import app.cartogliss.ui.map.KmlFeature
+import kotlinx.coroutines.launch
 import java.util.Locale
 
-/** A waypoint's details with "Go To" (set as target) and optionally "Show on map". */
+/** A waypoint's details with "Go To" (set as target), and optionally "Show on map" and "Delete". */
 @Composable
 fun WaypointDialog(
     wp: Waypoint,
@@ -31,6 +38,7 @@ fun WaypointDialog(
     onGoTo: () -> Unit,
     onDismiss: () -> Unit,
     onShowOnMap: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -59,9 +67,60 @@ fun WaypointDialog(
         confirmButton = { TextButton(onClick = onGoTo) { Text("Go To") } },
         dismissButton = {
             Row {
+                onDelete?.let { TextButton(onClick = it) { Text("Delete", color = MaterialTheme.colorScheme.error) } }
                 onShowOnMap?.let { TextButton(onClick = it) { Text("Show on map") } }
                 TextButton(onClick = onDismiss) { Text("Close") }
             }
         },
+    )
+}
+
+/** Details of a tapped line or area, with "Delete". */
+@Composable
+fun FeatureDialog(f: KmlFeature, distanceUnit: DistanceUnit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(f.name) },
+        text = {
+            Column {
+                Text(f.collectionTitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                Spacer(Modifier.height(8.dp))
+                Text(if (f.isArea) "Area · perimeter ${Units.distance(f.lengthM, distanceUnit)}" else "Line · ${Units.distance(f.lengthM, distanceUnit)}")
+                f.description?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, maxLines = 6)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        dismissButton = { TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
+    )
+}
+
+/**
+ * Confirms, then deletes the placemark [ref] from its KML file. A placemark with several geometries
+ * (MultiGeometry) is deleted as a whole.
+ */
+@Composable
+fun DeletePlacemarkDialog(name: String, collectionTitle: String, ref: PlacemarkRef, onDone: () -> Unit) {
+    val context = LocalContext.current
+    val container = context.appContainer
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Delete $name?") },
+        text = { Text("It is removed from $collectionTitle (the KML file is edited).") },
+        confirmButton = {
+            TextButton(onClick = {
+                onDone()
+                container.appScope.launch {
+                    val ok = runCatching { container.kml.deletePlacemark(ref) }.getOrElse { false }
+                    if (!ok) scope.launch {
+                        Toast.makeText(context, "Not deleted: the file changed or can't be written", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }

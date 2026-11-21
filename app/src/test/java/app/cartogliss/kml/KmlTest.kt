@@ -122,4 +122,45 @@ class KmlTest {
         val kml = Kmz.extractKml(zipped)!!
         assertEquals("Trip", KmlParser.parse(kml.inputStream()).name)
     }
+
+    private fun bytesOf(doc: org.w3c.dom.Document) = ByteArrayOutputStream().also { KmlWriter.write(doc, it) }.toByteArray()
+
+    @Test
+    fun removePlacemark_byIndex_keepsEverythingElse() {
+        val parsed = parse()
+        val route = parsed.placemarks.first { it.name == "Route" }
+        val doc = Xml.builder().parse(sample.byteInputStream())
+        assertTrue(KmlWriter.removePlacemark(doc, route.index, "Route"))
+        val out = bytesOf(doc).toString(Charsets.UTF_8)
+        assertTrue(out.contains("ExtendedData"))
+        val after = KmlParser.parse(out.byteInputStream())
+        assertEquals(parsed.placemarks.size - 1, after.placemarks.size)
+        assertTrue(after.placemarks.none { it.name == "Route" })
+        // Indices follow document order in the new file.
+        val idx = after.placemarks.map { it.index }
+        assertEquals(idx.sorted().distinct(), idx)
+    }
+
+    @Test
+    fun removePlacemark_refusesWhenTheFileChanged() {
+        val doc = Xml.builder().parse(sample.byteInputStream())
+        val hutA = parse().placemarks.first { it.name == "Hut A" }
+        assertEquals(false, KmlWriter.removePlacemark(doc, hutA.index, "Someone else"))
+        assertEquals(false, KmlWriter.removePlacemark(doc, 99, "Hut A"))
+        assertEquals(parse().placemarks.size, KmlParser.parse(bytesOf(doc).inputStream()).placemarks.size)
+    }
+
+    @Test
+    fun addThenRemove_leavesTheFileAsItWas() {
+        val doc0 = Xml.builder().parse(sample.byteInputStream())
+        KmlWriter.addPlacemark(doc0, "seed", 1.0, 2.0) // a file that was edited once by the app
+        val before = bytesOf(doc0)
+        repeat(3) {
+            val doc = Xml.builder().parse(bytesOf(Xml.builder().parse(before.inputStream())).inputStream())
+            KmlWriter.addPlacemark(doc, "temp", 3.0, 4.0)
+            val idx = KmlParser.parse(doc).placemarks.first { it.name == "temp" }.index
+            assertTrue(KmlWriter.removePlacemark(doc, idx, "temp"))
+            assertEquals(before.toString(Charsets.UTF_8), bytesOf(doc).toString(Charsets.UTF_8))
+        }
+    }
 }

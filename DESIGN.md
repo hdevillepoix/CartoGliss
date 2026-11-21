@@ -185,6 +185,13 @@ It should let the user select which KML the waypoint should be saved in.
 > - Adding a waypoint appends a `<Placemark>` to the first `<Document>` (or `<Folder>`) and rewrites the file through a temp file and rename, without re-indenting it.
 > - On the map: lines and areas use the KML colour and width (defaults: magenta lines, translucent magenta fill, orange waypoints). Waypoint names are drawn with a white halo, but are skipped when more than 300 are on screen.
 > - Tapping near a waypoint (within 24 dp) opens its details with "Go To". The tap is acted on only after the double-tap timeout, so double-tap zoom still works.
+>
+> **Addition (2026-11-21): tapping lines and areas, and deleting.**
+> - A tap first looks for a waypoint within 24 dp. If there is none, it looks for the nearest line or area outline within 24 dp, and then for the top-most area containing the tap (holes don't count).
+> - Lines and areas open a details dialog: name, collection, length (perimeter for areas), description, and Delete.
+> - The waypoint dialog, on the map and in Browse, also has Delete. Every delete asks for confirmation.
+> - Deleting removes the whole `<Placemark>` (all of its MultiGeometry parts) from the KML file, in place through the DOM, like adding a waypoint. The rest of the file is kept, and adding then deleting a placemark leaves the file byte-identical.
+> - A placemark is identified by its position among the file's Placemarks plus its name. If the file changed meanwhile (for example edited by another app in the shared folder) and the name at that position no longer matches, nothing is deleted and a message says so.
 > - Browse: search by name. Sorted by distance when there is a fix, by name otherwise. Each waypoint offers "Go To" or "Show on map".
 
 ### Tracks
@@ -405,7 +412,7 @@ Status (2026-11-21): milestones 0–8 implemented and unit-tested; on-device tes
 
 
 # Testing
-Current suite (80 JVM tests): settings round-trip, built-in keys and the storage folder; tile maths and quadkeys; viewport stepping/panning/visible tiles; URL templates; catalog validity, coverage and registry persistence; distance/bearing/compass; unit and coordinate formatting; coordinate parsing and the space-bar rule; UV formula, threshold crossing and real sun data (Geneva/London); KML parse/styles/KMZ/in-place edit (no whitespace growth); GPX write/parse, segments and the track filter; area-selection maths (splits, dedup, exact counts); point buffer; file folder writes (a failed write keeps the old file), unique names and migration clashes. The SAF folder needs a device.
+Current suite (84 JVM tests): settings round-trip, built-in keys and the storage folder; tile maths and quadkeys; viewport stepping/panning/visible tiles; URL templates; catalog validity, coverage and registry persistence; distance/bearing/compass; unit and coordinate formatting; coordinate parsing and the space-bar rule; UV formula, threshold crossing and real sun data (Geneva/London); KML parse/styles/KMZ/in-place edit (no whitespace growth), placemark delete (refused if the file changed; add + delete is byte-identical); GPX write/parse, segments and the track filter; area-selection maths (splits, dedup, exact counts); point buffer; file folder writes (a failed write keeps the old file), unique names and migration clashes. The SAF folder needs a device.
 
 - JVM unit tests for the pure logic: tile math and quadkeys, coordinate parser and formatter, distance/bearing, UV and astro, KML parsing and round-trip (add a waypoint, rest of the file unchanged), download tile counting, scale-bar rounding.
 - On-device checks: zoom and overzoom behaviour, missing-tile placeholder (no fallback from other levels), no fling when panning, cone hidden when the phone is tilted, background recording with the screen off.

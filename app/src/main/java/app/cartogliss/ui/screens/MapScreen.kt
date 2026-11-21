@@ -71,6 +71,11 @@ import app.cartogliss.ui.map.TILE_DP
 import app.cartogliss.ui.map.ZoomControls
 import app.cartogliss.ui.stats.StatsView
 import app.cartogliss.ui.waypoints.WaypointDialog
+import app.cartogliss.ui.waypoints.FeatureDialog
+import app.cartogliss.ui.waypoints.DeletePlacemarkDialog
+import app.cartogliss.ui.map.KmlFeature
+import app.cartogliss.ui.map.KmlHit
+import app.cartogliss.kml.PlacemarkRef
 import app.cartogliss.ui.map.KmlLayerData
 import app.cartogliss.ui.map.hitTest
 import app.cartogliss.kml.Waypoint
@@ -122,6 +127,9 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onOpenSources:
     var showStats by rememberSaveable { mutableStateOf(false) }
     var showPin by remember { mutableStateOf(false) }
     var tappedWaypoint by remember { mutableStateOf<Waypoint?>(null) }
+    var tappedFeature by remember { mutableStateOf<KmlFeature?>(null) }
+    // name, collection title, placemark
+    var deleting by remember { mutableStateOf<Triple<String, String, PlacemarkRef>?>(null) }
     val collections by container.kml.collections.collectAsStateWithLifecycle()
     val kmlLayer = remember(collections) { KmlLayerData.from(collections) }
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
@@ -247,7 +255,11 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onOpenSources:
                 kml = kmlLayer,
                 tracks = savedLines + liveLines,
                 onTap = { at ->
-                    kmlLayer.hitTest(vp, tilePx, mapSize.width, mapSize.height, at, tapRadiusPx)?.let { tappedWaypoint = it }
+                    when (val hit = kmlLayer.hitTest(vp, tilePx, mapSize.width, mapSize.height, at, tapRadiusPx)) {
+                        is KmlHit.Point -> tappedWaypoint = hit.waypoint
+                        is KmlHit.Shape -> tappedFeature = hit.feature
+                        null -> Unit
+                    }
                 },
                 modifier = Modifier.fillMaxSize().onSizeChanged { mapSize = it },
             )
@@ -373,8 +385,26 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onOpenSources:
                 scope.launch { container.settings.setTarget(Target(wp.lat, wp.lon, wp.name)) }
             },
             onDismiss = { tappedWaypoint = null },
+            onDelete = {
+                tappedWaypoint = null
+                deleting = Triple(wp.name, wp.collectionTitle, wp.ref)
+            },
         )
     }
+
+    tappedFeature?.let { f ->
+        FeatureDialog(
+            f = f,
+            distanceUnit = live.distanceUnit,
+            onDelete = {
+                tappedFeature = null
+                deleting = Triple(f.name, f.collectionTitle, f.ref)
+            },
+            onDismiss = { tappedFeature = null },
+        )
+    }
+
+    deleting?.let { (name, title, ref) -> DeletePlacemarkDialog(name, title, ref) { deleting = null } }
 
     if (showPin) {
         PinDialog(

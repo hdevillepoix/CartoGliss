@@ -70,6 +70,7 @@ fun WaypointBrowseScreen(onToMap: () -> Unit, onBack: () -> Unit) {
     val fix by container.location.fix.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<Waypoint?>(null) }
+    var deleting by remember { mutableStateOf<Waypoint?>(null) }
     val s = settings ?: return
 
     val shown = remember(waypoints, query, fix) {
@@ -128,8 +129,13 @@ fun WaypointBrowseScreen(onToMap: () -> Unit, onBack: () -> Unit) {
                 }
             },
             onDismiss = { selected = null },
+            onDelete = {
+                selected = null
+                deleting = wp
+            },
         )
     }
+    deleting?.let { wp -> DeletePlacemarkDialog(wp.name, wp.collectionTitle, wp.ref) { deleting = null } }
 }
 
 /** KML collections: activate (star), import, create, delete. */

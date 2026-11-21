@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.sp
 import app.cartogliss.kml.KmlCollection
 import app.cartogliss.kml.KmlGeometry
 import app.cartogliss.kml.LatLon
+import app.cartogliss.geo.Geo
+import app.cartogliss.kml.PlacemarkRef
 import app.cartogliss.kml.Waypoint
 import app.cartogliss.map.MapViewport
 import app.cartogliss.map.TileMath
@@ -36,8 +38,25 @@ class Ring(val xs: DoubleArray, val ys: DoubleArray) {
     val minX = xs.min(); val maxX = xs.max(); val minY = ys.min(); val maxY = ys.max()
 }
 
-class PreparedLine(val ring: Ring, val color: Int, val widthDp: Float)
-class PreparedArea(val rings: List<Ring>, val fill: Int?, val outline: Int?, val widthDp: Float)
+/** A tapped line or area (points are [Waypoint]s). */
+data class KmlFeature(
+    val name: String,
+    val description: String?,
+    val collectionTitle: String,
+    val ref: PlacemarkRef,
+    val isArea: Boolean,
+    /** Line length, or area perimeter, in metres. */
+    val lengthM: Double,
+)
+
+/** What a tap on the map hit. */
+sealed interface KmlHit {
+    data class Point(val waypoint: Waypoint) : KmlHit
+    data class Shape(val feature: KmlFeature) : KmlHit
+}
+
+class PreparedLine(val ring: Ring, val color: Int, val widthDp: Float, val feature: KmlFeature? = null)
+class PreparedArea(val rings: List<Ring>, val fill: Int?, val outline: Int?, val widthDp: Float, val feature: KmlFeature? = null)
 class PreparedPoint(val x: Double, val y: Double, val color: Int, val waypoint: Waypoint)
 
 class KmlLayerData(
@@ -57,17 +76,23 @@ class KmlLayerData(
                 val doc = c.doc ?: continue
                 for (pm in doc.placemarks) {
                     val st = pm.style
+                    val ref = PlacemarkRef(c.id, pm.index, pm.name)
+                    fun feature(pts: List<LatLon>, isArea: Boolean) = KmlFeature(
+                        pm.name ?: "(unnamed)", pm.description, c.title, ref, isArea,
+                        pts.zipWithNext { a, b -> Geo.distance(a.lat, a.lon, b.lat, b.lon) }.sum(),
+                    )
                     for (g in pm.geometries) when (g) {
-                        is KmlGeometry.Line -> lines += PreparedLine(ring(g.points), st.lineColor ?: DEFAULT_LINE, st.lineWidth ?: 2.5f)
+                        is KmlGeometry.Line -> lines += PreparedLine(ring(g.points), st.lineColor ?: DEFAULT_LINE, st.lineWidth ?: 2.5f, feature(g.points, false))
                         is KmlGeometry.Polygon -> areas += PreparedArea(
                             rings = listOf(ring(g.outer)) + g.holes.map(::ring),
                             fill = if (st.fill) st.polyColor ?: DEFAULT_FILL else null,
                             outline = if (st.outline) st.lineColor ?: DEFAULT_LINE else null,
                             widthDp = st.lineWidth ?: 1.5f,
+                            feature = feature(g.outer + g.outer.take(1), true),
                         )
                         is KmlGeometry.Point -> points += PreparedPoint(
                             TileMath.lonToX(g.at.lon), TileMath.latToY(g.at.lat), st.iconColor ?: DEFAULT_POINT,
-                            Waypoint(pm.name ?: "(unnamed)", g.at.lat, g.at.lon, pm.description, c.id, c.title),
+                            Waypoint(pm.name ?: "(unnamed)", g.at.lat, g.at.lon, pm.description, c.id, c.title, ref),
                         )
                     }
                 }
@@ -164,16 +189,77 @@ private fun Path.addRing(r: Ring, shift: Double, p: Projector, close: Boolean) {
     if (close) close()
 }
 
-/** The waypoint nearest to a screen point, within [radiusPx]. */
-fun KmlLayerData.hitTest(vp: MapViewport, tilePx: Float, width: Int, height: Int, at: Offset, radiusPx: Float): Waypoint? {
+/**
+ * What a tap at [at] hits, in priority order: the nearest waypoint within [radiusPx], else the nearest
+ * line within [radiusPx], else the top-most area containing the tap.
+ */
+fun KmlLayerData.hitTest(vp: MapViewport, tilePx: Float, width: Int, height: Int, at: Offset, radiusPx: Float): KmlHit? {
     val p = Projector(vp, tilePx, width.toFloat(), height.toFloat())
-    var best: Waypoint? = null
-    var bestD = radiusPx * radiusPx
+    val r2 = radiusPx * radiusPx
+    var bestPt: Waypoint? = null
+    var bestD = r2
     for (pt in points) {
         val dx = p.x(pt.x, worldShift(pt.x, vp.mx)) - at.x
         val dy = p.y(pt.y) - at.y
         val d = dx * dx + dy * dy
-        if (d <= bestD) { bestD = d; best = pt.waypoint }
+        if (d <= bestD) { bestD = d; bestPt = pt.waypoint }
+    }
+    if (bestPt != null) return KmlHit.Point(bestPt)
+
+    var bestLine: KmlFeature? = null
+    bestD = r2
+    for (l in lines) {
+        val f = l.feature ?: continue
+        val d = ringDistance2(l.ring, worldShift((l.ring.minX + l.ring.maxX) / 2, vp.mx), p, at, closed = false)
+        if (d <= bestD) { bestD = d; bestLine = f }
+    }
+    // An area's outline counts as a line, so thin areas can be tapped too.
+    for (a in areas) {
+        val f = a.feature ?: continue
+        val outer = a.rings.first()
+        val d = ringDistance2(outer, worldShift((outer.minX + outer.maxX) / 2, vp.mx), p, at, closed = true)
+        if (d < bestD) { bestD = d; bestLine = f }
+    }
+    if (bestLine != null) return KmlHit.Shape(bestLine)
+
+    // Inside an area: the last drawn (top-most) wins. Even-odd over all rings, so holes don't count.
+    for (a in areas.asReversed()) {
+        val f = a.feature ?: continue
+        val outer = a.rings.first()
+        val shift = worldShift((outer.minX + outer.maxX) / 2, vp.mx)
+        val nx = (at.x - p.ox) / p.s - shift
+        val ny = (at.y - p.oy) / p.s
+        if (a.rings.count { it.contains(nx, ny) } % 2 == 1) return KmlHit.Shape(f)
+    }
+    return null
+}
+
+private fun Ring.contains(x: Double, y: Double): Boolean {
+    if (x < minX || x > maxX || y < minY || y > maxY) return false
+    var inside = false
+    var j = xs.size - 1
+    for (i in xs.indices) {
+        if ((ys[i] > y) != (ys[j] > y) && x < (xs[j] - xs[i]) * (y - ys[i]) / (ys[j] - ys[i]) + xs[i]) inside = !inside
+        j = i
+    }
+    return inside
+}
+
+/** Squared screen distance from [at] to the polyline. */
+private fun ringDistance2(r: Ring, shift: Double, p: Projector, at: Offset, closed: Boolean): Float {
+    var best = Float.MAX_VALUE
+    val n = r.xs.size
+    val segs = if (closed) n else n - 1
+    for (i in 0 until segs) {
+        val j = (i + 1) % n
+        val ax = p.x(r.xs[i], shift); val ay = p.y(r.ys[i])
+        val bx = p.x(r.xs[j], shift); val by = p.y(r.ys[j])
+        val dx = bx - ax; val dy = by - ay
+        val len2 = dx * dx + dy * dy
+        val t = if (len2 == 0f) 0f else (((at.x - ax) * dx + (at.y - ay) * dy) / len2).coerceIn(0f, 1f)
+        val ex = ax + t * dx - at.x; val ey = ay + t * dy - at.y
+        val d = ex * ex + ey * ey
+        if (d < best) best = d
     }
     return best
 }

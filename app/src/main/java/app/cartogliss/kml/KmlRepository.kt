@@ -35,8 +35,19 @@ data class KmlCollection(
     val areaCount get() = doc?.placemarks?.sumOf { p -> p.geometries.count { it is KmlGeometry.Polygon } } ?: 0
 }
 
+/** Identifies a placemark in a collection file, for deleting it. [name] is the raw name (null if unnamed). */
+data class PlacemarkRef(val collectionId: String, val index: Int, val name: String?)
+
 /** One waypoint of an active collection, for Browse and map taps. */
-data class Waypoint(val name: String, val lat: Double, val lon: Double, val description: String?, val collectionId: String, val collectionTitle: String)
+data class Waypoint(
+    val name: String,
+    val lat: Double,
+    val lon: Double,
+    val description: String?,
+    val collectionId: String,
+    val collectionTitle: String,
+    val ref: PlacemarkRef = PlacemarkRef(collectionId, -1, null),
+)
 
 /**
  * KML collections. The files in the waypoints folder are the source of truth (DESIGN.md); this keeps a
@@ -65,7 +76,7 @@ class KmlRepository(
 
     val activeWaypoints: StateFlow<List<Waypoint>> = collections.map { list ->
         list.filter { it.active }.flatMap { c ->
-            c.doc?.points.orEmpty().map { (pm, at) -> Waypoint(pm.name ?: "(unnamed)", at.lat, at.lon, pm.description, c.id, c.title) }
+            c.doc?.points.orEmpty().map { (pm, at) -> Waypoint(pm.name ?: "(unnamed)", at.lat, at.lon, pm.description, c.id, c.title, PlacemarkRef(c.id, pm.index, pm.name)) }
         }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
@@ -163,6 +174,22 @@ class KmlRepository(
             dir.write(id) { KmlWriter.write(doc, it) }
         }
         refreshLocked()
+    }
+
+    /**
+     * Delete a placemark (all its geometries) from its file, in place. Returns false when the file
+     * changed and the placemark is no longer where it was (nothing is changed then).
+     */
+    suspend fun deletePlacemark(ref: PlacemarkRef): Boolean = mutex.withLock {
+        val dir = dir()
+        val ok = withContext(Dispatchers.IO) {
+            val doc = dir.read(ref.collectionId) { Xml.builder().parse(it) }
+            KmlWriter.removePlacemark(doc, ref.index, ref.name).also { removed ->
+                if (removed) dir.write(ref.collectionId) { KmlWriter.write(doc, it) }
+            }
+        }
+        refreshLocked()
+        ok
     }
 
     private fun safeName(title: String): String =
