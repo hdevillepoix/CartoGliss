@@ -229,3 +229,20 @@ fun RecordIcon(mode: RecordMode, tint: Color, modifier: Modifier = Modifier) {
 
 /** "½", "1", "2", … */
 fun overzoomLabel(m: Double): String = if (m == 0.5) "½" else m.toInt().toString()
+
+/** A winding track with start and end dots: "tracks". */
+@Composable
+fun TrackIcon(tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(24.dp)) {
+        val w = size.width
+        val h = size.height
+        val p = Path().apply {
+            moveTo(w * 0.15f, h * 0.82f)
+            cubicTo(w * 0.5f, h * 0.95f, w * 0.15f, h * 0.45f, w * 0.5f, h * 0.5f)
+            cubicTo(w * 0.85f, h * 0.55f, w * 0.5f, h * 0.05f, w * 0.85f, h * 0.18f)
+        }
+        drawPath(p, tint, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(tint, 2.5.dp.toPx(), Offset(w * 0.15f, h * 0.82f))
+        drawCircle(tint, 2.5.dp.toPx(), Offset(w * 0.85f, h * 0.18f))
+    }
+}

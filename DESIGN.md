@@ -128,6 +128,8 @@ At what time sun will be next pass UV index=3.
   
 ## Menu
 
+> **Addition (2026-11-21):** each section header has an icon in the header colour: folded map (Maps), pin (Waypoints), winding track with end dots (Tracks), gear (Settings).
+
 ### Maps
 #### Download maps
 This opens a special view of the map, where users can paint which areas they can cached.

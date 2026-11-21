@@ -1,7 +1,14 @@
 package app.cartogliss.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -42,13 +49,18 @@ fun ScreenScaffold(
 }
 
 @Composable
-fun SectionHeader(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
+fun SectionHeader(text: String, icon: (@Composable (Color) -> Unit)? = null) {
+    val color = MaterialTheme.colorScheme.primary
+    Row(
+        Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon(color) }
+            Spacer(Modifier.width(10.dp))
+        }
+        Text(text, style = MaterialTheme.typography.titleSmall, color = color)
+    }
 }
 
 @Composable

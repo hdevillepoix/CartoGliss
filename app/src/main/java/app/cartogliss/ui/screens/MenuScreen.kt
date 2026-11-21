@@ -8,6 +8,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Settings
+import app.cartogliss.ui.map.MapIcon
+import app.cartogliss.ui.map.TrackIcon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +39,7 @@ fun MenuScreen(onNavigate: (String) -> Unit, onBack: () -> Unit) {
 
     ScreenScaffold("Menu", onBack) { padding ->
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState())) {
-            SectionHeader("Maps")
+            SectionHeader("Maps") { MapIcon(it) }
             NavItem("Download maps") { onNavigate(Routes.DOWNLOAD) }
             sources.filter { it.id in s.starredSources && !container.sources.isHidden(it.id) }.forEach { src ->
                 SourceMenuItem(src, selected = src.id == s.viewport.sourceId, missingKey = src.missingKey(keys)?.label) {
@@ -47,15 +51,15 @@ fun MenuScreen(onNavigate: (String) -> Unit, onBack: () -> Unit) {
             }
             NavItem("More maps") { onNavigate(Routes.SOURCES) }
 
-            SectionHeader("Waypoints")
+            SectionHeader("Waypoints") { Icon(Icons.Filled.Place, contentDescription = null, tint = it) }
             NavItem("Browse") { onNavigate(Routes.WAYPOINTS_BROWSE) }
             NavItem("Collections") { onNavigate(Routes.WAYPOINTS_COLLECTIONS) }
             NavItem("Add manually") { onNavigate(Routes.WAYPOINTS_ADD) }
 
-            SectionHeader("Tracks")
+            SectionHeader("Tracks") { TrackIcon(it) }
             NavItem("Browse") { onNavigate(Routes.TRACKS_BROWSE) }
 
-            SectionHeader("Settings")
+            SectionHeader("Settings") { Icon(Icons.Filled.Settings, contentDescription = null, tint = it) }
             NavItem("Settings") { onNavigate(Routes.SETTINGS) }
         }
     }
