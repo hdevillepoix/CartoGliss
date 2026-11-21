@@ -58,6 +58,7 @@ fun MapView(
     onPan: (dx: Float, dy: Float) -> Unit,
     onStep: (steps: Int, focusFromCentre: Offset) -> Unit,
     onPinchPending: (Int) -> Unit,
+    overlay: MapOverlay,
     modifier: Modifier = Modifier,
 ) {
     val tilePx = with(LocalDensity.current) { TILE_DP.toPx() }
@@ -164,6 +165,7 @@ fun MapView(
                 drawPlaceholder(t)
             }
         }
+        drawOverlays(viewport, tilePx, overlay)
     }
 }
 

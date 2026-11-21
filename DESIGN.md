@@ -48,10 +48,19 @@ direction of movement is indicated by an arrow (triangle with no fill).
 > - Heading comes from `TYPE_ROTATION_VECTOR`, is corrected to true north with `GeomagneticField` and lightly smoothed. The cone is hidden when the device is tilted more than 60° from flat.
 > - The movement arrow comes from `Location.bearing` and shows only when speed is above 0.5 m/s and the fix is recent.
 > - Target: set from Pin → "Go To", or by tapping a waypoint (in Browse or on the map). It **persists across restarts**. Long-press on the target status clears it.
+> - Overlay details (M2):
+>   - The cone is a translucent blue ±20° wedge of radius 64 dp. It is shown only when there is a position, because converting to true north needs the local magnetic declination.
+>   - The cone points where the **top of the screen** faces, so it also works in landscape.
+>   - The movement arrow is an outlined dark-blue triangle (with a white halo) around the dot.
+>   - The target is a green ring. The dashed line is clipped to the screen and takes the short way across the antimeridian.
+>   - The crosshair has 1 dp black arms with a small central gap.
+>   - The "centre on my position" button sits under the zoom controls. It is disabled until a fix exists, and stale fixes count.
+> - Location (M2): the permission is requested the first time the map opens. GPS and the compass run only while the map screen is visible (track recording will hold GPS on in M6). Updates arrive every 1 s from the GPS provider.
 
 A scale is in the bottom right of the map. it is always the same size on the screen, but the number it corresponds to changes.
 
 > **Decision:** the scale bar is a fixed 2 cm on screen. Its label is the ground distance at the centre latitude, rounded to 2 significant figures, in the chosen distance unit.
+> Short distances switch to a smaller unit: m below 1 km; ft below 0.1 mi; m below 0.1 NM. The bar is drawn black with a white halo, above the state-bar area (M2).
 
 The center of the map is indicated by a thin black crosshair.
 

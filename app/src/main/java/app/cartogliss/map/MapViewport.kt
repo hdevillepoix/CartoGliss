@@ -100,6 +100,28 @@ data class MapViewport(
         return out
     }
 
+    /**
+     * Screen position (px) of a lat/lon on a [width]×[height] screen. Horizontally, the copy of the
+     * world nearest to normalized x [refX] is used (default: the view centre), so lines take the short way.
+     */
+    fun toScreen(lat: Double, lon: Double, width: Int, height: Int, tilePx: Float, refX: Double = mx): Pair<Double, Double> {
+        val s = scale(tilePx)
+        var dx = TileMath.lonToX(lon) - refX
+        dx -= kotlin.math.round(dx)
+        val x = refX + dx
+        val y = TileMath.latToY(lat)
+        return Pair((x - mx) * s + width / 2.0, (y - my) * s + height / 2.0)
+    }
+
+    /** Normalized x of a longitude, on the world copy nearest the view centre. */
+    fun nearestX(lon: Double): Double {
+        var dx = TileMath.lonToX(lon) - mx
+        dx -= kotlin.math.round(dx)
+        return mx + dx
+    }
+
+    fun centredOn(lat: Double, lon: Double) = copy(mx = TileMath.wrapX(TileMath.lonToX(lon)), my = TileMath.latToY(lat))
+
     fun toViewport(sourceId: String) = Viewport(lat = lat, lon = lon, zoom = zoom, overzoom = overzoom, sourceId = sourceId)
 
     companion object {

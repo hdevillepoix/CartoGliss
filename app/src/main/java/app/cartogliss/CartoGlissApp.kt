@@ -3,6 +3,8 @@ package app.cartogliss
 import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import app.cartogliss.location.HeadingTracker
+import app.cartogliss.location.LocationTracker
 import app.cartogliss.settings.KeyProvider
 import app.cartogliss.settings.SettingsRepository
 import app.cartogliss.tiles.TileLoader
@@ -35,6 +37,9 @@ class AppContainer(context: Context) {
         .build()
 
     val tileStore = TileStore(context)
+
+    val location = LocationTracker(context)
+    val heading = HeadingTracker(context)
 
     val tileLoader = TileLoader(tileStore, http, appScope) { apiKeys.value[it] }
 }
