@@ -55,6 +55,14 @@ direction of movement is indicated by an arrow (triangle with no fill).
 >   - The target is a green ring. The dashed line is clipped to the screen and takes the short way across the antimeridian.
 >   - The crosshair has 1 dp black arms with a small central gap.
 >   - The "centre on my position" button sits under the zoom controls. It is disabled until a fix exists, and stale fixes count.
+> - State bar (M3), left to right: map/stats toggle · target status · Pin · satellites (used/visible) · record · menu.
+>   - Tapping the target status centres the map on the target; a long-press clears it.
+>   - The GPS on/off toggle is not remembered across restarts: GPS is on at launch.
+> - Stats view (M3):
+>   - Altitude is above mean sea level where the phone provides it (Android 14+), otherwise GPS ellipsoid height.
+>   - Without a fix, the sun/moon/UV figures use the map centre and say so.
+>   - Rise/set times are for today, local time.
+>   - The UV figures are labelled as a clear-sky estimate.
 > - Location (M2): the permission is requested the first time the map opens. GPS and the compass run only while the map screen is visible (track recording will hold GPS on in M6). Updates arrive every 1 s from the GPS provider.
 
 A scale is in the bottom right of the map. it is always the same size on the screen, but the number it corresponds to changes.

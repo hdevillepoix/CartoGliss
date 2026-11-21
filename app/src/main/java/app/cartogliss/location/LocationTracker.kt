@@ -36,7 +36,12 @@ data class Fix(
         fun from(l: Location) = Fix(
             lat = l.latitude,
             lon = l.longitude,
-            altitudeM = if (l.hasAltitude()) l.altitude else null,
+            // Prefer altitude above mean sea level (Android 14+); otherwise GPS height above the WGS84 ellipsoid.
+            altitudeM = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && l.hasMslAltitude() -> l.mslAltitudeMeters
+                l.hasAltitude() -> l.altitude
+                else -> null
+            },
             accuracyM = if (l.hasAccuracy()) l.accuracy else null,
             speedMps = if (l.hasSpeed()) l.speed else null,
             bearingDeg = if (l.hasBearing()) l.bearing else null,

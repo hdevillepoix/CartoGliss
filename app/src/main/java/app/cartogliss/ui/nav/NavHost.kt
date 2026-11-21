@@ -1,7 +1,9 @@
 package app.cartogliss.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.cartogliss.ui.screens.CacheScreen
@@ -21,6 +23,8 @@ object Routes {
     const val WAYPOINTS_BROWSE = "waypoints/browse"
     const val WAYPOINTS_COLLECTIONS = "waypoints/collections"
     const val WAYPOINTS_ADD = "waypoints/add"
+    const val WAYPOINTS_ADD_PATTERN = "waypoints/add?lat={lat}&lon={lon}"
+    fun addWaypoint(lat: Double, lon: Double) = "waypoints/add?lat=$lat&lon=$lon"
     const val TRACKS_BROWSE = "tracks/browse"
     const val SETTINGS = "settings"
     const val SETTINGS_KEYS = "settings/keys"
@@ -36,14 +40,25 @@ fun CartoGlissNavHost() {
     val go: (String) -> Unit = { nav.navigate(it) }
 
     NavHost(navController = nav, startDestination = Routes.MAP) {
-        composable(Routes.MAP) { MapScreen(onOpenMenu = { go(Routes.MENU) }) }
+        composable(Routes.MAP) {
+            MapScreen(
+                onOpenMenu = { go(Routes.MENU) },
+                onAddWaypoint = { lat, lon -> go(Routes.addWaypoint(lat, lon)) },
+            )
+        }
         composable(Routes.MENU) { MenuScreen(onNavigate = go, onBack = back) }
 
         composable(Routes.DOWNLOAD) { PlaceholderScreen("Download maps", "Milestone 7", back) }
         composable(Routes.SOURCES) { PlaceholderScreen("More maps", "Milestone 4", back) }
         composable(Routes.WAYPOINTS_BROWSE) { PlaceholderScreen("Waypoints", "Milestone 5", back) }
         composable(Routes.WAYPOINTS_COLLECTIONS) { PlaceholderScreen("Collections", "Milestone 5", back) }
-        composable(Routes.WAYPOINTS_ADD) { PlaceholderScreen("Add waypoint", "Milestone 5", back) }
+        composable(
+            Routes.WAYPOINTS_ADD_PATTERN,
+            arguments = listOf(
+                navArgument("lat") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("lon") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) { PlaceholderScreen("Add waypoint", "Milestone 5", back) }
         composable(Routes.TRACKS_BROWSE) { PlaceholderScreen("Tracks", "Milestone 6", back) }
 
         composable(Routes.SETTINGS) { SettingsScreen(onNavigate = go, onBack = back) }
