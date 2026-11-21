@@ -1,6 +1,13 @@
 package app.cartogliss.ui.screens
 
 import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.core.content.ContextCompat
+import app.cartogliss.tracks.TrackStats
+import app.cartogliss.ui.map.TrackLines
 import android.hardware.GeomagneticField
 import android.os.SystemClock
 import android.view.Surface
@@ -112,6 +119,24 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
     val collections by container.kml.collections.collectAsStateWithLifecycle()
     val kmlLayer = remember(collections) { KmlLayerData.from(collections) }
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Tracks: saved ones that are switched on, plus the one being recorded.
+    val recording by container.recorder.state.collectAsStateWithLifecycle()
+    val trackFiles by container.trackFiles.tracks.collectAsStateWithLifecycle()
+    val savedLines = remember(trackFiles, live.shownTracks) {
+        trackFiles.filter { it.id in live.shownTracks }.flatMap { tf -> tf.track?.segments.orEmpty().let { TrackLines.fromSegments(it, live = false) } }
+    }
+    val liveLines = remember(recording?.points) {
+        recording?.points?.groupBy { it.seg }?.values?.toList()?.let { TrackLines.fromSegments(it, live = true) }.orEmpty()
+    }
+    var confirmStop by remember { mutableStateOf(false) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        container.recorder.start(context)
+    }
+    // An interrupted recording (app killed while recording) is resumed when the map opens.
+    LaunchedEffect(Unit) {
+        if (container.recorder.state.value == null && container.recorder.hasOpenTrack()) container.recorder.resume(context)
+    }
     val tapRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
     // A different source may have a narrower zoom range.
     LaunchedEffect(source.minZoom, source.maxZoom) { vp = vp.clampZoom(source.minZoom, source.maxZoom) }
@@ -168,9 +193,9 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
         gpsOn = gpsOn,
         satsUsed = gnss.used,
         satsVisible = gnss.visible,
-        recording = false,
-        recordSummary = null,
-        recordAvailable = false, // milestone 6
+        recording = recording != null,
+        recordSummary = recording?.let { "${Units.distance(it.distanceM, live.distanceUnit)} · ${TrackStats.duration(System.currentTimeMillis() - it.startedAtMs)}" },
+        recordAvailable = true,
     )
     val barActions = StateBarActions(
         onToggleStats = { showStats = !showStats },
@@ -181,7 +206,18 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
         },
         onPin = { showPin = true },
         onToggleGps = { container.location.setEnabled(!gpsOn) },
-        onRecord = {},
+        onRecord = {
+            when {
+                recording != null -> confirmStop = true
+                !container.location.hasPermission() ->
+                    Toast.makeText(context, "Location permission is needed to record", Toast.LENGTH_LONG).show()
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED ->
+                    // The notification shows progress and a Stop button; recording works without it too.
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else -> container.recorder.start(context)
+            }
+        },
         onMenu = onOpenMenu,
     )
 
@@ -196,6 +232,7 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
                 onPinchPending = { pinchPending = it },
                 overlay = overlay,
                 kml = kmlLayer,
+                tracks = savedLines + liveLines,
                 onTap = { at ->
                     kmlLayer.hitTest(vp, tilePx, mapSize.width, mapSize.height, at, tapRadiusPx)?.let { tappedWaypoint = it }
                 },
@@ -250,6 +287,24 @@ private fun MapContent(initial: Settings, onOpenMenu: () -> Unit, onAddWaypoint:
             }
         }
         StateBar(barState, barActions)
+    }
+
+    if (confirmStop) {
+        AlertDialog(
+            onDismissRequest = { confirmStop = false },
+            title = { Text("Stop recording?") },
+            text = { Text("The track is saved as a GPX file (Menu → Tracks).") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmStop = false
+                    scope.launch {
+                        val file = container.recorder.stop(context)
+                        Toast.makeText(context, file?.let { "Saved ${it.name}" } ?: "Nothing recorded", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("Stop and save") }
+            },
+            dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Keep recording") } },
+        )
     }
 
     tappedWaypoint?.let { wp ->

@@ -59,6 +59,11 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         it[K.activeKml] = if (active) current + fileName else current - fileName
     }
 
+    suspend fun setTrackShown(fileName: String, shown: Boolean) = store.edit {
+        val current = it[K.shownTracks] ?: emptySet()
+        it[K.shownTracks] = if (shown) current + fileName else current - fileName
+    }
+
     /** Switch the map to another tile source, keeping the position. */
     suspend fun setSource(sourceId: String) = store.edit { it[K.vpSource] = sourceId }
 
@@ -96,6 +101,7 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
                 sourceId = p[K.vpSource] ?: dv.sourceId,
             ),
             activeKml = p[K.activeKml] ?: d.activeKml,
+            shownTracks = p[K.shownTracks] ?: d.shownTracks,
         )
     }
 
@@ -120,5 +126,6 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val vpOverzoom = intPreferencesKey("viewport.overzoom")
         val vpSource = stringPreferencesKey("viewport.source")
         val activeKml = stringSetPreferencesKey("kml.active")
+        val shownTracks = stringSetPreferencesKey("tracks.shown")
     }
 }

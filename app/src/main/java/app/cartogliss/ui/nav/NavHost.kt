@@ -16,6 +16,7 @@ import app.cartogliss.ui.screens.SettingsScreen
 import app.cartogliss.ui.screens.TrackSettingsScreen
 import app.cartogliss.ui.screens.UnitsScreen
 import app.cartogliss.ui.sources.SourceDetailScreen
+import app.cartogliss.ui.tracks.TracksScreen
 import app.cartogliss.ui.waypoints.AddWaypointScreen
 import app.cartogliss.ui.waypoints.CollectionsScreen
 import app.cartogliss.ui.waypoints.WaypointBrowseScreen
@@ -101,7 +102,7 @@ fun CartoGlissNavHost() {
                 onBack = back,
             )
         }
-        composable(Routes.TRACKS_BROWSE) { PlaceholderScreen("Tracks", "Milestone 6", back) }
+        composable(Routes.TRACKS_BROWSE) { TracksScreen(onToMap = toMap, onBack = back) }
 
         composable(Routes.SETTINGS) { SettingsScreen(onNavigate = go, onBack = back) }
         composable(Routes.SETTINGS_KEYS) { KeysScreen(onBack = back) }

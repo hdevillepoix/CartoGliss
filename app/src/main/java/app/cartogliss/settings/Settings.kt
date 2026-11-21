@@ -70,6 +70,8 @@ data class Settings(
     val viewport: Viewport = Viewport(),
     /** File names of the KML collections shown on the map. */
     val activeKml: Set<String> = DEFAULT_ACTIVE_KML,
+    /** File names of saved GPX tracks drawn on the map. */
+    val shownTracks: Set<String> = emptySet(),
 ) {
     companion object {
         val DEFAULT_STARRED = setOf("osm-standard", "opentopomap")

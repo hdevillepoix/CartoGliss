@@ -65,6 +65,7 @@ fun MapView(
     overlay: MapOverlay,
     modifier: Modifier = Modifier,
     kml: KmlLayerData = KmlLayerData.EMPTY,
+    tracks: List<PreparedLine> = emptyList(),
     /** A confirmed single tap (not the first half of a double-tap), in screen px. */
     onTap: (Offset) -> Unit = {},
 ) {
@@ -188,6 +189,7 @@ fun MapView(
             }
         }
         drawKml(viewport, tilePx, kml)
+        drawTrackLines(viewport, tilePx, tracks)
         drawOverlays(viewport, tilePx, overlay)
     }
 }

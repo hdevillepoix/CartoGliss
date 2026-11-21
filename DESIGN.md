@@ -89,7 +89,16 @@ Indication of how many. Hitting this icon disables/enables GPS.
 #### Record button
 Turns red when recording a track, and displays how far and how long the recorded track is so far.
 
-> **Decision:** recording runs in a foreground service with a persistent notification, so it keeps going with the screen off. This needs background location permission.
+> **Decision:** recording runs in a foreground service with a persistent notification, so it keeps going with the screen off.
+> **Correction (M6):** background location permission is *not* needed. A location foreground service started while the app is visible keeps "while in use" access, so the app never asks for "Allow all the time".
+>
+> **Implementation (M6):**
+> - Points are journaled to SQLite as they arrive, filtered by the three Track recording settings. Only live fixes count; the last stale fix isn't recorded.
+> - The notification shows distance and duration, and has a "Stop and save" action. On Android 13+ the notification permission is asked the first time you record; recording works without it.
+> - Stopping (state bar → confirm, or the notification) writes `files/tracks/yyyy-MM-dd_HH-mm.gpx` (GPX 1.1, named "Track yyyy-MM-dd HH:mm") and switches it on for the map.
+> - If Android kills the app mid-recording, the service restarts and continues the same track in a new `<trkseg>`. Opening the map also resumes an interrupted recording.
+> - The GPS on/off toggle also pauses recording (no fixes arrive).
+> - On the map, the live track is red and saved tracks are blue, 3 dp.
 #### Icon to access the menu
 
 
@@ -162,6 +171,8 @@ It should let the user select which KML the waypoint should be saved in.
 ### Tracks
 #### Browse
 See and select GPX tracks (previously saved)
+
+> **Decision (M6):** the list is newest first, with date, distance, duration and point count. A checkbox shows or hides a track on the map. Tapping a track opens it on the map (centred on its start). Tracks can be shared (GPX via the share sheet) and deleted.
 
 
 

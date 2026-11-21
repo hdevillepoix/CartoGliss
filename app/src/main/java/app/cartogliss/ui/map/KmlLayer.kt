@@ -177,3 +177,21 @@ fun KmlLayerData.hitTest(vp: MapViewport, tilePx: Float, width: Int, height: Int
     }
     return best
 }
+
+private const val TRACK_SAVED = 0xFF1565C0.toInt()
+private const val TRACK_LIVE = 0xFFD32F2F.toInt()
+
+/** GPX tracks for the map: saved ones in blue, the one being recorded in red. */
+object TrackLines {
+    fun fromSegments(segments: List<List<app.cartogliss.tracks.TrackPoint>>, live: Boolean): List<PreparedLine> =
+        segments.filter { it.size >= 2 }.map { seg ->
+            PreparedLine(
+                Ring(DoubleArray(seg.size) { TileMath.lonToX(seg[it].lon) }, DoubleArray(seg.size) { TileMath.latToY(seg[it].lat) }),
+                if (live) TRACK_LIVE else TRACK_SAVED,
+                3f,
+            )
+        }
+}
+
+fun DrawScope.drawTrackLines(vp: MapViewport, tilePx: Float, lines: List<PreparedLine>) =
+    drawKml(vp, tilePx, KmlLayerData(lines = lines))

@@ -14,6 +14,9 @@ import app.cartogliss.tiles.SourceRegistry
 import app.cartogliss.tiles.TileFetcher
 import app.cartogliss.tiles.TileLoader
 import app.cartogliss.tiles.TileStore
+import app.cartogliss.tracks.TrackFiles
+import app.cartogliss.tracks.TrackJournal
+import app.cartogliss.tracks.TrackRecorder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,9 +67,17 @@ class AppContainer(context: Context) {
 
     val tileLoader = TileLoader(tileStore, fetcher, appScope)
 
+    val trackFiles = TrackFiles(File(context.filesDir, "tracks"))
+
+    val recorder = TrackRecorder(TrackJournal(context), location, settings, appScope, File(context.filesDir, "tracks")) { file ->
+        trackFiles.refresh()
+        settings.setTrackShown(file.name, true)
+    }
+
     init {
         // A newly entered key should take effect without waiting for the retry delay.
         appScope.launch { apiKeys.collect { tileLoader.clearFailures() } }
+        appScope.launch { trackFiles.refresh() }
     }
 }
 
