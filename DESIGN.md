@@ -354,6 +354,8 @@ Single Gradle `:app` module to start, organised by package:
 
 
 # Roadmap
+Status (2026-11-21): milestones 0–8 implemented and unit-tested; on-device testing pending.
+
 0. Project skeleton: Gradle, Compose navigation, settings store.
 1. Renderer with a single source (OSM Standard): discrete zoom, pan, pinch snap, overzoom toggle, disk cache, placeholder tiles.
 2. Overlays: GPS point, heading cone, movement arrow, crosshair, scale bar, target + dashed line.
@@ -363,9 +365,18 @@ Single Gradle `:app` module to start, organised by package:
 6. Track recording service, GPX, Tracks browse.
 7. Download-area screen and WorkManager downloader.
 8. Units everywhere, polish.
+   - Done (M8): units and angle format are used everywhere distances, speeds, altitudes and coordinates appear. Adaptive launcher icon (folded map + crosshair, with a monochrome layer). Back closes the stats view first. Lint is clean apart from one informational note about the `-v26` icon folder, which AAPT still requires.
+
+## Later (not in v1)
+- EPSG:27700 (OS Leisure 1:25k/1:50k), overlay tile layers, catalog import/export.
+- Importing GPX tracks (only recorded tracks are listed now).
+- Remembering the painted download area across app restarts.
+- Dynamic Azure Maps attribution.
 
 
 # Testing
+Current suite (70 JVM tests): settings round-trip; tile maths and quadkeys; viewport stepping/panning/visible tiles; URL templates; catalog validity, coverage and registry persistence; distance/bearing/compass; unit and coordinate formatting; coordinate parsing and the space-bar rule; UV formula, threshold crossing and real sun data (Geneva/London); KML parse/styles/KMZ/in-place edit (no whitespace growth); GPX write/parse, segments and the track filter; area-selection maths (splits, dedup, exact counts).
+
 - JVM unit tests for the pure logic: tile math and quadkeys, coordinate parser and formatter, distance/bearing, UV and astro, KML parsing and round-trip (add a waypoint, rest of the file unchanged), download tile counting, scale-bar rounding.
 - On-device checks: zoom and overzoom behaviour, missing-tile placeholder (no fallback from other levels), no fling when panning, cone hidden when the phone is tilted, background recording with the screen off.
 

@@ -12,7 +12,6 @@ import app.cartogliss.ui.screens.CacheScreen
 import app.cartogliss.ui.screens.KeysScreen
 import app.cartogliss.ui.screens.MapScreen
 import app.cartogliss.ui.screens.MenuScreen
-import app.cartogliss.ui.screens.PlaceholderScreen
 import app.cartogliss.ui.screens.SettingsScreen
 import app.cartogliss.ui.screens.TrackSettingsScreen
 import app.cartogliss.ui.screens.UnitsScreen

@@ -39,10 +39,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -284,7 +285,7 @@ fun SourceEditScreen(id: String?, duplicate: Boolean, onSaved: (String) -> Unit,
     var template by remember { mutableStateOf(base?.urlTemplate ?: "https://") }
     var subdomains by remember { mutableStateOf(base?.subdomains?.joinToString(",") ?: "") }
     var headers by remember { mutableStateOf(base?.headers?.entries?.joinToString("\n") { "${it.key}: ${it.value}" } ?: "") }
-    var tileSize by remember { mutableStateOf(base?.tileSize ?: 256) }
+    var tileSize by remember { mutableIntStateOf(base?.tileSize ?: 256) }
     var minZoom by remember { mutableStateOf((base?.minZoom ?: 0).toString()) }
     var maxZoom by remember { mutableStateOf((base?.maxZoom ?: 19).toString()) }
     var keyChoice by remember {
@@ -441,7 +442,7 @@ fun SourceEditScreen(id: String?, duplicate: Boolean, onSaved: (String) -> Unit,
 private fun Field(
     label: String,
     value: String,
-    modifier: Modifier = Modifier.fillMaxWidth(),
+    modifier: Modifier = Modifier,
     mono: Boolean = false,
     singleLine: Boolean = true,
     number: Boolean = false,
@@ -461,6 +462,6 @@ private fun Field(
                 else -> KeyboardType.Text
             },
         ),
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
     )
 }

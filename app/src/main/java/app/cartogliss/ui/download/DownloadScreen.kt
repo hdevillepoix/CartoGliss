@@ -32,12 +32,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -107,7 +108,7 @@ fun DownloadScreen(onBack: () -> Unit) {
     var levels by remember { mutableStateOf(setOf(vp.zoom)) }
     var wifiOnly by remember { mutableStateOf(false) }
     var rect by remember { mutableStateOf<Pair<Offset, Offset>?>(null) }
-    var avgTileBytes by remember { mutableStateOf(DEFAULT_TILE_BYTES) }
+    var avgTileBytes by remember { mutableLongStateOf(DEFAULT_TILE_BYTES) }
     LaunchedEffect(source.id) {
         avgTileBytes = withContext(Dispatchers.IO) {
             val n = container.tileStore.tileCount(source.id)
