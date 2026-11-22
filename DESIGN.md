@@ -28,7 +28,7 @@ A target GPS button will center the map on current user device location.
 > - Overzoom scales up the tiles of level N. No other level is fetched.
 > - Pinch: once the pinch passes a threshold, exactly ±1 step is applied on release (zoom level, or overzoom when red mode is on). Nothing between levels is ever drawn. Double-tap = +1 step.
 > - Tile size: each source declares 256 or 512 px. A tile is always drawn at 256 dp × M, so 512 px tiles act as high-DPI tiles.
-> - Zoom focus (M1): +/− zoom around the map centre (the crosshair). Double-tap zooms around the tapped point. A pinch zooms around the point between the fingers.
+> - Zoom focus (M1): +/− zoom around the map centre (the crosshair). Double-tap zooms around the map centre too, wherever the tap is (change 2026-11-22; it used to zoom around the tapped point). A pinch zooms around the point between the fingers.
 > - Pinch threshold (M1): a ratio of 1.4 counts as one step. While pinching, a faint large "+" or "−" at the centre shows what releasing will do.
 > - Overzoom mode (the red toggle) is not remembered across restarts; the factor M is.
 > - The map wraps horizontally across the antimeridian. Beyond the poles a darker grey "void" is drawn, distinct from the light-grey tile placeholder with its fine grid.

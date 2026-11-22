@@ -183,7 +183,7 @@ fun MapView(
                             (down.position - lastTapPos).getDistance() < doubleTapSlop
                         if (isDouble) {
                             pendingTap[0]?.cancel()
-                            step(1, down.position - centre)
+                            step(1, Offset.Zero) // around the map centre, wherever the tap was
                             lastTapTime = 0L
                         } else {
                             lastTapTime = upTime
