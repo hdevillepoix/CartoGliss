@@ -14,6 +14,7 @@ val keysFile = rootProject.file("keys.env")
 val keyProps = Properties().apply { if (keysFile.exists()) keysFile.reader().use { load(it) } }
 fun builtInKey(name: String): String =
     (keyProps.getProperty(name)?.takeIf { it.isNotBlank() } ?: System.getenv(name) ?: "").trim().removeSurrounding("\"")
+fun envOrNull(name: String) = builtInKey(name).takeIf { it.isNotEmpty() }
 fun quoted(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 val keyNames = listOf("THUNDERFOREST", "MAPBOX", "TRACESTRACK", "OS", "AZURE")
 
@@ -27,16 +28,33 @@ android {
         applicationId = "app.cartogliss"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI sets these from the git tag (see .github/workflows/release.yml).
+        versionCode = envOrNull("CARTOGLISS_VERSION_CODE")?.toInt() ?: 1
+        versionName = envOrNull("CARTOGLISS_VERSION_NAME") ?: "0.1.0"
         keyNames.forEach { buildConfigField("String", "KEY_$it", quoted(builtInKey("${it}_KEY"))) }
+    }
+
+    /*
+     * Release signing: a keystore given by CARTOGLISS_KEYSTORE (path), CARTOGLISS_KEYSTORE_PASSWORD,
+     * CARTOGLISS_KEY_ALIAS and CARTOGLISS_KEY_PASSWORD, from keys.env or the environment (CI). Without
+     * them, release builds are signed with the local debug key.
+     */
+    val releaseKeystore = envOrNull("CARTOGLISS_KEYSTORE")?.let { rootProject.file(it) }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = envOrNull("CARTOGLISS_KEYSTORE_PASSWORD")
+                keyAlias = envOrNull("CARTOGLISS_KEY_ALIAS")
+                keyPassword = envOrNull("CARTOGLISS_KEY_PASSWORD") ?: envOrNull("CARTOGLISS_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sideloaded personal app: sign release builds with the debug key for now.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

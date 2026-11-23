@@ -1,0 +1,37 @@
+# Build and unit-test on every push to main and every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Optional built-in map keys (repository secrets of the same names; blank if not set).
+      THUNDERFOREST_KEY: ${{ secrets.THUNDERFOREST_KEY }}
+      MAPBOX_KEY: ${{ secrets.MAPBOX_KEY }}
+      TRACESTRACK_KEY: ${{ secrets.TRACESTRACK_KEY }}
+      OS_KEY: ${{ secrets.OS_KEY }}
+      AZURE_KEY: ${{ secrets.AZURE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Accept Android SDK licences (missing SDK parts are downloaded by the build)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Test and build
+        run: ./gradlew testDebugUnitTest assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14

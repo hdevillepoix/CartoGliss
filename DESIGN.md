@@ -217,6 +217,10 @@ Sources:
 
 > **Built-in keys (2026-11-21):** keys can optionally be built into the APK. Put them in `keys.env` at the repo root (gitignored; template in `keys.env.example`, lines like `MAPBOX_KEY=…`), or set environment variables with the same names. Gradle turns them into `BuildConfig.KEY_*` fields. A key typed here overrides the built-in one, and clearing the field goes back to it. Built-in keys can be extracted from the APK, so don't share an APK that carries them.
 
+> **GitHub builds (2026-11-23):** `.github/workflows/ci.yml` tests and builds a debug APK on pushes to `main` and on pull requests (the APK is kept as a run artifact for 14 days). `.github/workflows/release.yml` runs when a tag `vX.Y.Z` is pushed: it tests, builds a signed release APK and publishes it as a GitHub release `CartoGliss-vX.Y.Z.apk`. Map keys come from repository secrets with the same names as the environment variables (`THUNDERFOREST_KEY`, `MAPBOX_KEY`, `TRACESTRACK_KEY`, `OS_KEY`, `AZURE_KEY`); a missing secret builds as no key. The version comes from the tag: versionName `X.Y.Z`, versionCode `X·10000 + Y·100 + Z`; local builds stay `0.1.0`/1.
+>
+> Release signing: Gradle uses a keystore given by `CARTOGLISS_KEYSTORE` (path), `CARTOGLISS_KEYSTORE_PASSWORD`, `CARTOGLISS_KEY_ALIAS` and `CARTOGLISS_KEY_PASSWORD` (defaults to the store password), from `keys.env` or the environment; without them, release builds use the local debug key. The release workflow needs the secrets `CARTOGLISS_KEYSTORE_BASE64` (the keystore file, base64-encoded), `CARTOGLISS_KEYSTORE_PASSWORD` and `CARTOGLISS_KEY_ALIAS`, plus `CARTOGLISS_KEY_PASSWORD` if it differs. It fails if they are missing, because a debug key made on CI changes every run and its APKs could not update one another. Android only installs an update signed with the same key as the installed app, so changing key means uninstalling first: app-storage data is lost, but files in a picked storage folder survive.
+
 #### Units
 distance: m/km, miles, nautical miles
 speed: km/h, mph, kt, m/s
@@ -375,6 +379,7 @@ Does it make sense to use MapLibre Native?
 | Storage | GPX and KML in a user-picked shared folder (SAF): `tracks/`, `waypoints/`. App storage until one is picked. |
 | Coordinates | Signed decimal degrees by default. |
 | Built-in keys | Optional, from the gitignored `keys.env` into BuildConfig. Keys typed in Settings override them. |
+| CI / releases | GitHub Actions: CI on push/PR; tag `vX.Y.Z` → signed release APK on GitHub Releases. Keys and keystore come from repo secrets. |
 | Location | `LocationManager` GPS + `GnssStatus`. Heading from the rotation vector sensor, true north. |
 
 
