@@ -152,6 +152,19 @@
       "maxZoom": 18,
       "attribution": "© Commonwealth of Australia (Geoscience Australia)",
       "coverage": { "south": -50.0, "west": 100.1, "north": -2.4, "east": 169.2 }
+    },
+    {
+      "id": "ga-natmap-250k",
+      "name": "Australia NATMAP 250k 2008 (GA)",
+      "shortName": "NATMAP 250k",
+      "category": "Local",
+      "urlTemplate": "https://services.ga.gov.au/gis/rest/services/NATMAP_Maps_250K_2008/MapServer/WMTS/tile/1.0.0/NATMAP_Maps_250K_2008/default/GoogleMapsCompatible/{z}/{y}/{x}",
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 12,
+      "attribution": "© Commonwealth of Australia (Geoscience Australia), CC BY 4.0",
+      "coverage": { "south": -45.43, "west": 71.08, "north": -6.95, "east": 180.0 },
+      "notes": "Scanned 1:250k NATMAP sheets (2008). The server rejects zooms above 12."
     }
   ]
 }

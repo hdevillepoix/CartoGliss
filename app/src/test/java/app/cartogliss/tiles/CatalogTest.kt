@@ -20,7 +20,7 @@ class CatalogTest {
 
     @Test
     fun bundledCatalog_isValid() {
-        assertEquals(12, builtIns.size)
+        assertEquals(13, builtIns.size)
         assertEquals(builtIns.size, builtIns.map { it.id }.toSet().size)
         for (s in builtIns) {
             assertTrue("${s.id}: ${TileUrl.validate(s.urlTemplate)}", TileUrl.validate(s.urlTemplate).isEmpty())
@@ -40,6 +40,13 @@ class CatalogTest {
     fun gaUrl_usesRowThenColumn() {
         val ga = builtIns.first { it.id == "ga-topo-au" }
         assertTrue(TileUrl.build(ga, 10, 900, 600, null)!!.endsWith("/GoogleMapsCompatible/10/600/900.png"))
+    }
+
+    @Test
+    fun gaNatmap_rowThenColumn_maxZoom12() {
+        val nm = builtIns.first { it.id == "ga-natmap-250k" }
+        assertEquals(12, nm.maxZoom)
+        assertTrue(TileUrl.build(nm, 12, 3505, 2417, null)!!.endsWith("/GoogleMapsCompatible/12/2417/3505"))
     }
 
     @Test
